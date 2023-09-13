@@ -1,0 +1,45 @@
+int a1;
+int a2=6;
+int a3[2];
+int a4[3]={1,2,3};
+int a5,a6=6,a7=14-7;
+int a8[2],a9[2]={9,9};
+int a10[3][2];
+int a11[2][2] = {{0,0},{1,1}};
+int a12[2][2], a13[2][2]={{13,13-2},{13,13-1}};
+
+const int b1=!1;
+const int b2[2]={0,1};
+const int b3=6,b4=10-14,b5=b2[0]+b1;
+const int b6[2]={b3,b3+b4},b7[2]={-7,9-2};
+const int b8[2][2] = {{0,0},{-1,1}};
+const int b9[2][2]={{-1,-1},{1,1}}, b10[2][2]={{13,13*2},{13,13/1}};
+
+int main()
+{
+	printf("21373146\n");
+	a1=getint();
+	printf("input1: a1 = %d\n",a1);
+	printf("a2 = %d\n",a2);
+	a2 = -1;
+	printf("changed a2 = %d\n",a2);
+	a2=getint();
+	printf("input2: a2 = %d\n",a2);
+	for(int i=0;i<3;i++)
+	{
+		printf("i = %d, a4[%d] = %d\n",i,i,a4[i]);
+	}
+	for(int i=0;i<10;i++)
+	{
+		if(i<2)
+		{
+			printf("yes!");
+			continue;
+		}
+		else
+		{
+			break;
+		}
+	}
+	return 0;
+ } 
