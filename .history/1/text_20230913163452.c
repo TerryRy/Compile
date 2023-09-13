@@ -153,33 +153,7 @@ void funcDef14() {
     funcDef9(0, 0);
     funcDef9_2(0, 0, 0);
     /*B级数组*/
-    /*MulExp*/
-    0;
-    0*0;
-    1/1;
-    1%2;
-    /*AddExp*/
-    0;
-    0+0;
-    0-0;
-    /*RelExp*/
-    if (0){}
-    if (0 < 0){}
-    if (0 > 0){}
-    if (0 <= 0){}
-    if (0 >= 0){}
-    /*EqExp*/
-    if (0){}
-    if (0 == 0){}
-    if (0 != 0){}
-    /*LAndExp*/
-    if (0){}
-    if (0 && 0){}
-    /*LOrExp*/
-    if (0){}
-    if (0 || 0){}
-    /*ConstExp*/
-    const int int_18 = 0;
+    
 }
 int funcDef15() {
     return 0;
