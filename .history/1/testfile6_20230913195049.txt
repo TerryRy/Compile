@@ -26,6 +26,12 @@ int int_11 = 11;
 
 
 // 函数存在多个
+int funDef_for_int() {
+    return 0;
+}
+int funcDef_for_int_with_params() {
+    return 0;
+}
 void funcDef1() {
     int n = 0;
 }
@@ -45,6 +51,8 @@ int funcDef6() {
 void funcDef7() {}
 void funcDef8(int int_13) {}
 void funcDef9(int int_14, int int_15) {}
+/*怕后面实参表说不够多来一个*/
+void funcDef9_2(int int_14, int int_15, int int_15_2) {}
 // 函数形参
 /*C级不用管*/
 // 语句块
@@ -105,6 +113,60 @@ void funcDef14() {
     /*printf涉及计数和顺序有点麻烦，统一放在main中管理*/
     /*ForStmt*/
     /*位置不好判断，for中已有*/
+    /*Exp*/
+    /*funcDef15的return中已存在*/
+    /*Cont*/
+    /*for中已存在*/
+    /*LVal*/
+    int_17 = 0;
+    /*PrimaryExp*/
+    int_17 = (0);
+    int_17 = int_17;
+    int_17 = 0;
+    /*Number*/
+    int_17 = 0;
+    /*UnaryExp*/
+    int_17 = 0;
+    int_17 = funDef_for_int();
+    int_17 = funcDef_for_int_with_params(0);
+    //多维数组问题
+    int_17 = +0;
+    /*UnaryOp*/
+    int_17 = +0;
+    int_17 = -0;
+    if(!0) {}
+    /*FuncRParams*/
+    funcDef8(0);
+    funcDef9(0, 0);
+    funcDef9_2(0, 0, 0);
+    /*B级数组*/
+    /*MulExp*/
+    0;
+    0*0;
+    1/1;
+    1%2;
+    /*AddExp*/
+    0;
+    0+0;
+    0-0;
+    /*RelExp*/
+    if (0){}
+    if (0 < 0){}
+    if (0 > 0){}
+    if (0 <= 0){}
+    if (0 >= 0){}
+    /*EqExp*/
+    if (0){}
+    if (0 == 0){}
+    if (0 != 0){}
+    /*LAndExp*/
+    if (0){}
+    if (0 && 0){}
+    /*LOrExp*/
+    if (0){}
+    if (0 || 0){}
+    /*ConstExp*/
+    const int int_18 = 0;
 }
 int funcDef15() {
     return 0;
@@ -115,15 +177,15 @@ int funcDef15() {
 
 int main() {
     printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518\n");
-    printf("21371518");
-
+    int d = 0;
+    printf("");
+    printf("a%d%d", 0, 0);
+    printf("\n");
+    printf("aa\n");
+    printf(" !()*+,-./\n");
+    printf("0123456789\n");
+    printf(":;<=>?@\n");
+    printf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\n");
+    printf("[]^_`{|}~%d", 0);
     return 0;
 }

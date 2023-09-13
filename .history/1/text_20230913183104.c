@@ -1,3 +1,16 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+int getint() {
+    int n = 0;
+    scanf("%d", &n);
+    return n;
+}
+
+
+
+
+
 // Decl存在多个
 // 多个Decl
 const int const_int_1 = 1;
