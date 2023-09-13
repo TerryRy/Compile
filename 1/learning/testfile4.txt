@@ -1,110 +1,21 @@
-void func1()
-{
-}
-int func(int t[][2])
-{
-	return 0;
-}
+int int_a = 1;
 
-int func3(int t1,int t2)
-{
-	return 1;
-}
+int main() {
+    printf("21371495\n");
+    { ; }
+    printf("hello world!\n");
+    printf("hello world!\n");
+    printf("hello world!\n");
+    printf("hello world!\n");
+    printf("hello world!\n");
+    printf("hello world!\n");
+    int a;
+    a = 1 + 1;
+    printf("%d\n",a);
 
-int func4(int t[])
-{
-	return 0;
-}
-
-void func5(int t[],int t1[])
-{
-	
-}
-
-void func6(int t1[][2], int t2[][2])
-{
-	return;
-}
-
-void func7(int t)
-{
-}
-/*
-aaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaa
-*/
-int main()
-{
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	printf("21373146\n");
-	int a;
-	a=15%5;
-	int b=4,c=3;
-	a=1;
-	int d=(b*c+10-a-1)/2;
-	if(1>=2)
-	{
-		a=1;
-	}
-	if(1<=2)
-	{
-		a=1;
-	}
-	if(1!=2)
-	{
-		a=1;
-	}
-	if(1==2)
-	{
-		a=1;
-	}
-	if(1>2)
-	{
-		a=1;
-	}
-	if(1<2)
-	{
-		a=1;
-	}
-	else{a=2;}
-	a=func3(0,1);
-	func1();
-	a=0;
-	if(!1)
-	{
-	}
-	if(1|0)
-	{
-	}
-	if(1&0)
-	{
-	}
-	if(1&&0)
-	{
-	}
-	if(1||0)
-	{
-	}
-	func7(1);
-	a = +-(+1)+(-2);
-	for(;;){break;}
-	for(a=0;;){break;}
-	for(a=0;a==0;){break;}
-	for(a=0;a==0;a=1){continue;}
-	a=1;
-	for(;a==1;){break;}
-	for(;a==1;a=a+1){break;}
-	for(;;a=a+1){break;}
-	a=0;
-	for(a=0;;a=a+1){break;}
-	return 0;
+    printf("%d\n",int_a);
+    int b;
+    b = getint();
+    printf("%d\n",b);
+    return 0;
 }

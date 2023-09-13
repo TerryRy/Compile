@@ -1,49 +1,103 @@
-int a1;
-int a2=6;
-int a3[2];
-int a4[3]={1,2,3};
-int a5,a6=6,a7=14-7;
-int a8[2],a9[2]={9,9};
-int a10[3][2];
-int a11[2][2] = {{0,0},{1,1}};
-int a12[2][2], a13[2][2]={{13,13-2},{13,13-1}};
+const int const_a = 1;
 
-const int b1=!1;
-const int b2[2]={0,1};
-const int b3=6,b4=10-14,b5=b2[0]+b1;
-const int b6[2]={b3,b3+b4},b7[2]={-7,9-2};
-const int b8[2][2] = {{0,0},{-1,1}};
-const int b9[2][2]={{-1,-1},{1,1}}, b10[2][2]={{13,13*2},{13,13/1}};
+int int_a = 0 + 0;
 
-int global_var = 0;
+int int_b, int_c;
 
-int func() 
+const int const_array[10] = {0, 1};
+
+const int const_double[1][1] = {{0}};
+
+int array_a[10] = {0, 1};
+int array_b[10][10] = {{0, 1}};
+
+void output_pai()
+
 {
-	global_var = global_var + 1;
-	return 1;
+    int flag = 0;
+    if (flag != 0 && flag == 0 || flag != 1) {printf("3.1415926\n");}
 }
 
-int main()
-{
-	printf("21373146\n");
-	a1=getint();
-	printf("input1: a1 = %d\n",a1);
-	printf("a2 = %d\n",a2);
-	a2 = -1;
-	printf("changed a2 = %d\n",a2);
-	a2=getint();
-	printf("input2: a2 = %d\n",a2);
-	for(int i=0;i<3;i++)
-	{
-		printf("i = %d, a4[%d] = %d\n",i,i,a4[i]);
-	}
-	if (0 && func()){
-		;
-	}
-	printf("%d\n",global_var); 
-	if (1 || func()) {
-		;
-	}
-	printf("%d\n",global_var); 
-	return 0;
- } 
+int isPrime(int n) {
+    int i = 2;
+    if (n <= 0) {
+        return 0;
+    }
+    while (i < (n / 2)) {
+        if (n % i == 0) {
+            return 0;
+        }
+        i = i + 1;
+    }
+    return 1;
+}
+
+int addNum(int x, int y) {
+    return x + y;
+}
+
+int addArray(int x[]) {
+    int i = 0;
+    int sum = 0;
+    while (i < 10) {
+        sum = sum + const_array[i];
+        i = i + 1;
+    }
+    return sum;
+}
+
+
+int main() {
+
+    printf("21371495\n");
+    output_pai();
+    ;
+    1 + 1;
+    int t;
+    t = getint();
+    printf("t isPrime ? %d\n", isPrime(t));
+
+    if (const_a >= int_b ) {int_a = 1;}
+    if (const_a >= int_c) {int_a = int_a + 2;} else {int_a = int_a;}
+    printf("%d\n", int_a);
+
+    printf("a + a = %d\n", addNum(const_a, const_a));
+    printf("sum Array = %d\n", addArray(array_a));
+
+    int array[100];
+    int i = 0, j;
+    int_c = i + 3 * 2 / 2;
+    j = 0;
+    while (i < 100) {
+        if (i % 2 == 0 || i % 3 == 0 || j % 5 == 2) {
+            array[i] = 1;
+        } else {
+            array[i] = 0;
+        }
+        i = i + 1;
+        j = j + 3;
+    }
+
+
+    int map[100][100] = {{0}};
+    i = array[1];
+    j = map[0][0];
+    while (i < 100) {
+        while (j < 100) {
+            if (i % 2 == 0 || i - 3 == 0 || j % 5 == 2) {
+                map[i][j] = 1;
+            } else {
+                map[i][j] = 0;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    const int const_b = array[2], const_c = map[2][5];
+    printf("%d\n", const_b);
+    printf("%d\n", const_c);
+    printf("%d\n", const_double[0][0]);
+    printf("%d\n",array_b[0][0]);
+
+    return 0;
+}
