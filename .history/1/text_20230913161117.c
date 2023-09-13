@@ -1,3 +1,16 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+int getint() {
+    int n = 0;
+    scanf("%d", &n);
+    return n;
+}
+
+
+
+
+
 // Decl存在多个
 // 多个Decl
 const int const_int_1 = 1;
@@ -26,12 +39,6 @@ int int_11 = 11;
 
 
 // 函数存在多个
-int funDef_for_int() {
-    return 0;
-}
-int funcDef_for_int_with_params() {
-    return 0;
-}
 void funcDef1() {
     int n = 0;
 }
@@ -123,12 +130,6 @@ void funcDef14() {
     int_17 = 0;
     /*Number*/
     int_17 = 0;
-    /*UnaryExp*/
-    int_17 = 0;
-    int_17 = funDef_for_int();
-    int_17 = funcDef_for_int_with_params(0);
-    //多维数组问题
-    // int_17 = +0;
 }
 int funcDef15() {
     return 0;

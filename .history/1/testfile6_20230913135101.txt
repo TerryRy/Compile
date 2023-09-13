@@ -26,12 +26,6 @@ int int_11 = 11;
 
 
 // 函数存在多个
-int funDef_for_int() {
-    return 0;
-}
-int funcDef_for_int_with_params() {
-    return 0;
-}
 void funcDef1() {
     int n = 0;
 }
@@ -111,24 +105,6 @@ void funcDef14() {
     /*printf涉及计数和顺序有点麻烦，统一放在main中管理*/
     /*ForStmt*/
     /*位置不好判断，for中已有*/
-    /*Exp*/
-    /*funcDef15的return中已存在*/
-    /*Cont*/
-    /*for中已存在*/
-    /*LVal*/
-    int_17 = 0;
-    /*PrimaryExp*/
-    int_17 = (0);
-    int_17 = int_17;
-    int_17 = 0;
-    /*Number*/
-    int_17 = 0;
-    /*UnaryExp*/
-    int_17 = 0;
-    int_17 = funDef_for_int();
-    int_17 = funcDef_for_int_with_params(0);
-    //多维数组问题
-    // int_17 = +0;
 }
 int funcDef15() {
     return 0;
