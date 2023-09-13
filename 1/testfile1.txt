@@ -1,0 +1,13 @@
+int main() {
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    printf("21371518\n");
+    return 0;
+}
