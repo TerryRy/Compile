@@ -16,12 +16,6 @@ void functionList() {
     /*应该用不到的*/int intList3[1+2] = {0, 0, 0}; int intList3_2[1+1][1+1] = {{0, 0}, {0, 0}};
     int intList4[3];
     int intList5[2][2];
-    int zero1[0];
-    int zero2[0][0];
-    intList[0] = 0;
-    intList0[0][0] = 0;
-    intList[0] = intList0[0][0];
-    intList0[0][0] = intList[0];
 }
 // 函数形参
 void funDef1(int f_int_list[]) {}

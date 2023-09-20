@@ -6,7 +6,7 @@ const int constList[3] = {0, 0, 0};
 /*应该用不到的*/const int constList3[1+2] = {0, 0, 0}; const int constList3_2[1+1][1+1] = {{0, 0}, {0, 0}};
 const int constList4[2][2] = {{0, 0}, {0, 0}};
 // /*不确定但应该得有的*/const int constList2_2[0] = {}; const int constList2_3[0][0] = {};
-int intList0[2][2] = {{0, 0}, {0, 0}};
+
 //变量定义
 /*放在函数中统一处理定义和初值*/
 void functionList() {
@@ -16,12 +16,6 @@ void functionList() {
     /*应该用不到的*/int intList3[1+2] = {0, 0, 0}; int intList3_2[1+1][1+1] = {{0, 0}, {0, 0}};
     int intList4[3];
     int intList5[2][2];
-    int zero1[0];
-    int zero2[0][0];
-    intList[0] = 0;
-    intList0[0][0] = 0;
-    intList[0] = intList0[0][0];
-    intList0[0][0] = intList[0];
 }
 // 函数形参
 void funDef1(int f_int_list[]) {}

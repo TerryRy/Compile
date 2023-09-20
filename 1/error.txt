@@ -1,3 +1,0 @@
-rating:99
-allCoverRate:99.2%
-缺少二维数组

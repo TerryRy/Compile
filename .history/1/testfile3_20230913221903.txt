@@ -18,10 +18,6 @@ void functionList() {
     int intList5[2][2];
     int zero1[0];
     int zero2[0][0];
-    intList[0] = 0;
-    intList0[0][0] = 0;
-    intList[0] = intList0[0][0];
-    intList0[0][0] = intList[0];
 }
 // 函数形参
 void funDef1(int f_int_list[]) {}
