@@ -61,7 +61,7 @@ public class Lexer {
 
     public Lexer() {
         initLexer();
-        lineNum = 0; // 行号可能在运算中修改，因此仅初始化一次。
+        lineNum = -1; // 行号可能在运算中修改，因此仅初始化一次。
         inExegesis = false;
 //        inFormatString = false;
         BufferedWriter writer = null;
@@ -97,7 +97,7 @@ public class Lexer {
                 str = next();
                 lexerPrinter(str);
             } catch (Exception e) {
-                lexerPrinter("错误！");
+                lexerPrinter("错误！line = " + lineNum + "\n");
             }
         }
     }
@@ -126,12 +126,15 @@ public class Lexer {
         if (isNonDigit(c)) {
             // 是字母或下划线
             token += c;
-            c = source.charAt(curPos++);
             while (curPos < source.length() && (Character.isLetterOrDigit(c) || c == '_')) {
-                token += c;
                 c = source.charAt(curPos++);
+                if (Character.isLetterOrDigit(c) || c == '_') {
+                    token += c;
+                }
+                else {
+                    curPos--;
+                }
             }
-            curPos--;
             reserve();
             if (!isSeparator(c)) {
                 throw new IllegalStateException();
@@ -141,12 +144,15 @@ public class Lexer {
         else if (Character.isDigit(c)) {
             // 是数字
             token += c;
-            c = source.charAt(curPos++);
             while (curPos < source.length() && Character.isDigit(c)) {
-                token += c;
                 c = source.charAt(curPos++);
+                if (Character.isDigit(c)) {
+                    token += c;
+                }
+                else {
+                    curPos--;
+                }
             }
-            curPos--;
             lexType = LexType.INTCON;
             number = Integer.parseInt(token);
             if (!isSeparator(c)) {
@@ -158,36 +164,36 @@ public class Lexer {
             switch (c) {
                 case '!' : {
                     token += c;
-                    if (source.charAt(curPos++) == '=') {
+                    if (curPos < source.length() && source.charAt(curPos) == '=') {
                         token += '=';
                         lexType = LexType.NEQ;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         lexType = LexType.NOT;
                     }
                     break;
                 }
                 case '&': {
                     token += c;
-                    if (source.charAt(curPos++) == '&') {
+                    if (curPos < source.length() && source.charAt(curPos) == '&') {
                         token += c;
                         lexType = LexType.AND;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         throw new IllegalStateException();
                     }
                     break;
                 }
                 case '|' : {
                     token += c;
-                    if (source.charAt(curPos++) == '|') {
+                    if (curPos < source.length() && source.charAt(curPos) == '|') {
                         token += c;
                         lexType = LexType.OR;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         throw new IllegalStateException();
                     }
                     break;
@@ -208,17 +214,23 @@ public class Lexer {
                     break;
                 }
                 case '/' : {
-                    c = source.charAt(curPos++);
+                    if (curPos < source.length()) {
+                        c = source.charAt(curPos++);
+                    }
+                    else {
+                        throw new IllegalArgumentException();
+                    }
                     if (c == '*') {
                         setInExegesis(true);
-                        c = source.charAt(curPos++);
                         while (curPos < source.length()) {
-                            if (c == '*' && source.charAt(curPos) == '/') {
-                                setInExegesis(false);
-                                curPos++;
-                                return "";
-                            }
                             c = source.charAt(curPos++);
+                            if (c == '*') {
+                                if (curPos < source.length() && source.charAt(curPos) == '/') {
+                                    setInExegesis(false);
+                                    curPos++;
+                                    return "";
+                                }
+                            }
                         }
                         return "";
                     }
@@ -240,36 +252,36 @@ public class Lexer {
                 }
                 case '<' : {
                     token += c;
-                    if (source.charAt(curPos++) == '=') {
+                    if (curPos < source.length() && source.charAt(curPos) == '=') {
                         token += '=';
                         lexType = LexType.LEQ;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         lexType = LexType.LSS;
                     }
                     break;
                 }
                 case '>' : {
                     token += c;
-                    if (source.charAt(curPos++) == '=') {
+                    if (curPos < source.length() && source.charAt(curPos) == '=') {
                         token += '=';
                         lexType = LexType.GEQ;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         lexType = LexType.GRE;
                     }
                     break;
                 }
                 case '=' : {
                     token += c;
-                    if (source.charAt(curPos++) == '=') {
+                    if (curPos < source.length() && source.charAt(curPos) == '=') {
                         token += '=';
                         lexType = LexType.EQL;
+                        curPos++;
                     }
                     else {
-                        curPos--;
                         lexType = LexType.ASSIGN;
                     }
                     break;
@@ -317,12 +329,16 @@ public class Lexer {
                 case '"' : {
                     token += c;
                     lexType = LexType.STRCON;
-                    c = source.charAt(curPos++);
-                    while (curPos < source.length() && c != '"') {
-                        token += c;
+                    while (curPos < source.length()) {
                         c = source.charAt(curPos++);
+                        token += c;
+                        if (c == '"') {
+                            break;
+                        }
                     }
-                    token += c;
+                    if (c != '"' || token.equals("\"")) {
+                        throw new IllegalStateException();
+                    }
                     break;
                 }
                 default: {
@@ -369,6 +385,7 @@ public class Lexer {
 
     public void setSource(String source) {
         this.source = source;
+        setLineNum(lineNum + 1);
     }
 
     public int getCurPos() {
