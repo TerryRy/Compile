@@ -127,7 +127,7 @@ public class Lexer {
             // 是字母或下划线
             token += c;
             c = source.charAt(curPos++);
-            while (curPos < source.length() && Character.isLetterOrDigit(c)) {
+            while (curPos < source.length() && (Character.isLetterOrDigit(c) || c == '_')) {
                 token += c;
                 c = source.charAt(curPos++);
             }
