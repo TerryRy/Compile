@@ -112,7 +112,7 @@ public class Lexer {
                     curPos++;
                     return "";
                 }
-                curPos++;
+                c = source.charAt(curPos++);
             }
             return "";
         }
@@ -218,7 +218,7 @@ public class Lexer {
                                 curPos++;
                                 return "";
                             }
-                            curPos++;
+                            c = source.charAt(curPos++);
                         }
                         return "";
                     }
