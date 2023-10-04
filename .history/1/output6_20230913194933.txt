@@ -1,8 +1,0 @@
-21371518
-a
-aa
- !()*+,-./
-0123456789
-:;<=>?@
-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
-[]^_`{|}~0
