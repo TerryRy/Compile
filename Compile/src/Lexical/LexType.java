@@ -6,6 +6,7 @@ public enum LexType {
     STRCON, // FormatString
     MAINTK, // main
     CONSTTK, // const
+
     INTTK, // int
     BREAKTK, // break
     CONTINUETK, // continue
