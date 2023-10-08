@@ -55,7 +55,7 @@ public class ConstInitVal implements Node {
                 constInitValList.get(i).print(writer);
             }
             writer.write(rb.toString());
-            writer.write(Syner.nodeType.get(NodeType.ConstInitVal));
         }
+        writer.write(Syner.nodeType.get(NodeType.ConstInitVal));
     }
 }

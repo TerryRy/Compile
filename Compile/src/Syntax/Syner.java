@@ -131,8 +131,8 @@ public class Syner {
         Token constToken = match(LexType.CONSTTK);
         BType bType = aBType();
         List<ConstDef> constDefList = new ArrayList<>();
-        List<Token> commas = new ArrayList<Token>();
-        Token semicnToken = null;
+        List<Token> commas = new ArrayList<>();
+        Token semicnToken;
         constDefList.add(aConstDef());
         while (now.getType() == LexType.COMMA) {
             commas.add(match(LexType.COMMA));
@@ -154,8 +154,8 @@ public class Syner {
         List<Token> lb = new ArrayList<>();
         List<ConstExp> constExpList = new ArrayList<>();
         List<Token> rb = new ArrayList<>();
-        Token assignToken = null;
-        ConstInitVal constInitVal = null;
+        Token assignToken;
+        ConstInitVal constInitVal;
         while (now.getType() == LexType.LBRACK) {
             lb.add(match(LexType.LBRACK));
             constExpList.add(aConstExp());
@@ -195,7 +195,7 @@ public class Syner {
         BType bType = aBType();
         List<VarDef> varDefList = new ArrayList<>();
         List<Token> commas = new ArrayList<>();
-        Token semicnToken = null;
+        Token semicnToken;
         varDefList.add(aVarDef());
         while (now.getType() == LexType.COMMA) {
             commas.add(match(LexType.COMMA));
@@ -258,8 +258,8 @@ public class Syner {
         Token ident = match(LexType.IDENFR);
         Token lb = match(LexType.LPARENT);
         FuncFParams funcFParams = null;
-        Token rb = null;
-        Block block = null;
+        Token rb;
+        Block block;
 
         if (now.getType() != LexType.RPARENT) {
             funcFParams = aFuncFParams();
@@ -331,7 +331,7 @@ public class Syner {
         // Block → '{' { BlockItem } '}'
         Token lb = match(LexType.LBRACE);
         List<BlockItem> blockItemList = new ArrayList<>();
-        Token rb = null;
+        Token rb;
 
         while (now.getType() != LexType.RBRACE) {
             blockItemList.add(aBlockItem());
@@ -395,7 +395,7 @@ public class Syner {
             List<Token> semicnList = new ArrayList<>();
             Cond cond = null;
             ForStmt forStmt2 = null;
-            Token rb = null;
+            Token rb;
             List<Stmt> stmtList = new ArrayList<>();
             if (now.getType() != LexType.SEMICN) {
                 forStmt1 = aForStmt();
@@ -428,7 +428,7 @@ public class Syner {
             // 'return' [Exp] ';'
             Token returnToken = match(LexType.RETURNTK);
             Exp exp = null;
-            Token semicn = null;
+            Token semicn;
 
             if (now.getType() != LexType.SEMICN) {
                 exp = aExp();
@@ -443,8 +443,8 @@ public class Syner {
             Token formatString = match(LexType.STRCON);
             List<Token> commas = new ArrayList<>();
             List<Exp> expList = new ArrayList<>();
-            Token rb = null;
-            Token semicn = null;
+            Token rb;
+            Token semicn;
 
             while (now.getType() == LexType.COMMA) {
                 commas.add(match(LexType.COMMA));
@@ -483,7 +483,7 @@ public class Syner {
             else {
                 // [Exp] ';'
                 Exp exp = null;
-                Token semicnToken = null;
+                Token semicnToken;
 
                 if (now.getType() != LexType.SEMICN) {
                     exp = aExp();
@@ -593,7 +593,7 @@ public class Syner {
 
     private UnaryOp aUnaryOp() {
         //  UnaryOp → '+' | '−' | '!'
-        Token opToken = null;
+        Token opToken;
 
         if (now.getType() == LexType.PLUS) {
             opToken = match(LexType.PLUS);

@@ -21,7 +21,7 @@ public class VarDecl implements Node{
         this.semicn = semicn;
     }
 
-    public BType getbType() {
+    public BType getBType() {
         return bType;
     }
 

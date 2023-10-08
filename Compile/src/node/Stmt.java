@@ -137,7 +137,7 @@ public class Stmt implements Node {
         return type;
     }
 
-    public LVal getlVal() {
+    public LVal getLVal() {
         return lVal;
     }
 

@@ -28,7 +28,7 @@ public class ConstDecl implements Node{
         return constToken;
     }
 
-    public BType getbType() {
+    public BType getBType() {
         return bType;
     }
 

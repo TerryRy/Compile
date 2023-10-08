@@ -18,7 +18,7 @@ public class ForStmt implements Node {
         this.exp = exp;
     }
 
-    public LVal getlVal() {
+    public LVal getLVal() {
         return lVal;
     }
 

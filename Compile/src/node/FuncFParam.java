@@ -23,7 +23,7 @@ public class FuncFParam implements Node {
         this.constExpList = constExpList;
     }
 
-    public BType getbType() {
+    public BType getBType() {
         return bType;
     }
 
