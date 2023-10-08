@@ -3,9 +3,9 @@ package Lexical;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+
+import Token.Token;
 
 public class Lexer {
     private static Lexer lexer; // 单例模式
@@ -14,26 +14,12 @@ public class Lexer {
     private String token; // 解析单词值
     private LexType lexType; // 解析单词类型
     private int number; // 解析数值
+    private List<Token> tokens = new ArrayList<>();
 
     // 以下非单行内属性，称为词法分析器状态属性
     private int lineNum; // 当前行号
     private boolean inExegesis; // 注释状态
-//    private boolean inFormatString; // printf
     private static final Map<String, LexType> reserveWords;
-//    private final String[] reserveWords = new String[] {
-//            "main",
-//            "const",
-//            "int",
-//            "break",
-//            "continue",
-//            "if",
-//            "else",
-//            "for",
-//            "getint",
-//            "printf",
-//            "return",
-//            "void"
-//    }; // 保留字表
 
     // 配置属性 注意此处无需手动修改
     private boolean printAble;
@@ -95,6 +81,9 @@ public class Lexer {
         while (curPos < source.length()) {
             try {
                 str = next();
+                if (token.equals(""))
+                    continue;
+                tokens.add(new Token(lexType, token, lineNum));
                 lexerPrinter(str);
             } catch (Exception e) {
                 lexerPrinter("错误！line = " + lineNum + "\n");
@@ -105,6 +94,9 @@ public class Lexer {
     // 总管单词获取和分析
     public String next() throws Exception {
         char c = source.charAt(curPos++);
+        while (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            c = source.charAt(curPos++);
+        }
         if (isInExegesis()) {
             while (curPos < source.length()) {
                 if (c == '*' && source.charAt(curPos) == '/') {
@@ -379,6 +371,10 @@ public class Lexer {
         return (Character.isLetter(c) || c == '_');
     }
 
+    public Token toToken() {
+        return new Token(lexType, token, lineNum);
+    }
+
     public String getSource() {
         return this.source;
     }
@@ -436,13 +432,9 @@ public class Lexer {
         this.inExegesis = inExegesis;
     }
 
-//    public boolean isInFormatString() {
-//        return inFormatString;
-//    }
-//
-//    public void setInFormatString(boolean inFormatString) {
-//        this.inFormatString = inFormatString;
-//    }
+    public List<Token> getTokens() {
+        return tokens;
+    }
 
     public boolean isPrintAble() {
         return printAble;

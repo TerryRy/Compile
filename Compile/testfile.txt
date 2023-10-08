@@ -1,0 +1,206 @@
+// #include <stdio.h>
+// 存在decl和FuncDef
+
+// ——————decl——————
+// constDecl 花括号内重复0次 花括号内重复多次 普通变量、一维数组、二维数组
+const int a = 0;
+const int Ident1[1] = {1}, Ident2[3][2] = {{1, 2}, {1, 2}, {1, 2}};
+
+// constDef 花括号内重复0次 花括号内重复多次 普通变量、一维数组、二维数组
+int b;
+int Ident3[2] = {1, 1};
+int Ident4[3][2] = {{1, 2}, {1, 2}, {1, 2}};
+
+// ——————FuncDef——————
+// int getint()
+// {
+//     int n;
+//     scanf("%d", &n);
+//     return n;
+// }
+// stmt case 7
+void func1()
+{
+    return;
+}
+int func2()
+{
+    return 0;
+}
+int func3(int x)
+{
+    return x;
+}
+int func4(int x, int y, int z)
+{
+    return 0;
+}
+int func5(int x[])
+{
+    return 0;
+}
+int func6(int x[][2])
+{
+    return 0;
+}
+
+// ——————MainFuncDef——————
+int main()
+{
+    printf("21373372\n");
+    // // // 声明
+    int x = 0, y = 0, z = 0;
+    const int u = 0, v = 0;
+    int x1[1] = {0}, x2[2][2] = {{0, 0}, {0, 0}};
+    // // 空括号
+    {
+    }
+
+    // stmt case 1
+    x = y + z;
+    // stmt case 2
+    y + z;
+    ;
+    // stmt case 3
+    if (1)
+    {
+    }
+    if (1)
+    {
+    }
+    else
+    {
+    }
+    // stmt case 4
+    for (x = 0; x <= 1; x = x + 1)
+    {
+        break;
+    }
+    for (; x <= 1; x = x + 1)
+    {
+        break;
+    }
+    for (x = 0;; x = x + 1)
+    {
+        break;
+    }
+    for (x = 0; x <= 1;)
+    {
+        break;
+    }
+    for (x = 0;;)
+    {
+        break;
+    }
+    for (; x <= 1;)
+    {
+        break;
+    }
+    for (;; x = x + 1)
+    {
+        break;
+    }
+    for (;;)
+    {
+        break;
+    }
+    // stmt case 5
+    for (x = 0; x <= 1; x = x + 1)
+    {
+        break;
+    }
+    // stmt case 6
+    for (x = 0; x <= 1; x = x + 1)
+    {
+        continue;
+    }
+    // stmt case 8
+    x = getint();
+    // stmt case 9
+    printf("x=%d", x);
+    printf("x");
+
+    // LVal
+    x = 0;
+    x1[0] = 0;
+    x2[0][0] = 0;
+
+    // 逻辑或与表达式
+    if (x || x)
+    {
+    }
+    if (x && x)
+    {
+    }
+    // 相等性表达式
+    if (x == x)
+    {
+    }
+    if (x != x)
+    {
+    }
+    // 关系表达式
+    if (x < x)
+    {
+    }
+    if (x > x)
+    {
+    }
+    if (x <= x)
+    {
+    }
+    if (x >= x)
+    {
+    }
+    // 加减表达式
+    if (x + x)
+    {
+    }
+    if (x - x)
+    {
+    }
+    // 乘除模表达式
+    if (x * x)
+    {
+    }
+    if (x / x)
+    {
+    }
+    if (x % x)
+    {
+    }
+    // 一元表达式
+    if (func2())
+    {
+    }
+    if (func3(x))
+    {
+    }
+    if (+1)
+    {
+    }
+    if (-1)
+    {
+    }
+    if (!1)
+    {
+    }
+    // 基本表达式
+    if ((1))
+    {
+    }
+    if (x)
+    {
+    }
+    // 函数参数表
+    if (func4(1, x1[0], x2[0][0]))
+    {
+    }
+    if (func5(x1))
+    {
+    }
+    if (func6(x2))
+    {
+    }
+    return 0;
+}
