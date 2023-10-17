@@ -6,7 +6,7 @@ import java.io.*;
 
 public class Compiler {
     // 关于测评的配置（主要是输出）
-    // public static final boolean printLex = false;
+    public static final boolean printLex = true;
 //    public static final boolean printSyn = true;
 //    public static Lexer lexer = Lexer.getLexer();
     public static void main(String[] args) {
@@ -20,7 +20,7 @@ public class Compiler {
             for (int i = 0; (line = reader.readLine()) != null; i++) {
                 lexer.initLexer();
                 lexer.setSource(line);
-                lexer.setPrintAble(Config.lexer);
+                lexer.setPrintAble(printLex);
                 lexer.analyse();
             }
 

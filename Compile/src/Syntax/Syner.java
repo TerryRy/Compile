@@ -91,9 +91,35 @@ public class Syner {
                 now = tokens.get(++index);
             }
             return tmpNow;
+        } else if (tokenType == LexType.SEMICN) {
+            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.i));
+            return new Token(TokenType.SEMICN, tokens.get(index - 1).getLineNumber(), ";");
+        } else if (tokenType == LexType.RPARENT) {
+            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.j));
+            return new Token(TokenType.RPARENT, tokens.get(index - 1).getLineNumber(), ")");
+        } else if (tokenType == LexType.RBRACK) {
+            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.k));
+            return new Token(TokenType.RBRACK, tokens.get(index - 1).getLineNumber(), "]");
         } else {
-            throw new RuntimeException("Syntax error at line " + now.getLineNumber() + ": " + now.getToken() + " has type " + now.getType() + " while expect type of " + tokenType);
+            throw new RuntimeException("Syntax error at line " + now.getLineNumber() + ": " + now.getToken() + " is not " + tokenType);
         }
+    }
+
+    private boolean isExp() {
+        return now.getType() == LexType.INTCON ||
+                now.getType() == LexType.IDENFR ||
+                now.getType() == LexType.NOT ||
+                now.getType() == LexType.PLUS ||
+                now.getType() == LexType.MINU ||
+                now.getType() == LexType.LPARENT;
+    }
+
+    private boolean isForStmt() {
+        return now.getType() == LexType.IDENFR;
+    }
+
+    private boolean isCond() {
+        return isExp();
     }
 
     private CompUnit aCompUnit() {
@@ -261,7 +287,7 @@ public class Syner {
         Token rb;
         Block block;
 
-        if (now.getType() != LexType.RPARENT) {
+        if (now.getType() == LexType.INTTK) {
             funcFParams = aFuncFParams();
         }
         rb = match(LexType.RPARENT);
@@ -397,15 +423,15 @@ public class Syner {
             ForStmt forStmt2 = null;
             Token rb;
             List<Stmt> stmtList = new ArrayList<>();
-            if (now.getType() != LexType.SEMICN) {
+            if (isForStmt()) {
                 forStmt1 = aForStmt();
             }
             semicnList.add(match(LexType.SEMICN));
-            if (now.getType() != LexType.SEMICN) {
+            if (isCond()) {
                 cond = aCond();
             }
             semicnList.add(match(LexType.SEMICN));
-            if (now.getType() != LexType.RPARENT) {
+            if (isForStmt()) {
                 forStmt2 = aForStmt();
             }
             rb = match(LexType.RPARENT);
@@ -430,7 +456,7 @@ public class Syner {
             Exp exp = null;
             Token semicn;
 
-            if (now.getType() != LexType.SEMICN) {
+            if (isExp()) {
                 exp = aExp();
             }
             semicn = match(LexType.SEMICN);
@@ -485,7 +511,7 @@ public class Syner {
                 Exp exp = null;
                 Token semicnToken;
 
-                if (now.getType() != LexType.SEMICN) {
+                if (isExp()) {
                     exp = aExp();
                 }
                 semicnToken = match(LexType.SEMICN);
@@ -574,7 +600,7 @@ public class Syner {
             // Ident '(' [FuncRParams] ')'
             identToken = match(LexType.IDENFR);
             lb = match(LexType.LPARENT);
-            if (now.getType() != LexType.RPARENT) {
+            if (isExp()) {
                 funcRParams = aFuncRParams();
             }
             rb = match(LexType.RPARENT);

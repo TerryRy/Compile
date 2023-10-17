@@ -86,7 +86,7 @@ public class Lexer {
                 tokens.add(new Token(lexType, token, lineNum));
                 lexerPrinter(str);
             } catch (Exception e) {
-                lexerPrinter("错误！line = " + lineNum + " " + token + " " + lexType + "\n");
+                lexerPrinter("错误！line = " + lineNum + "\n");
             }
         }
     }
@@ -147,9 +147,9 @@ public class Lexer {
             }
             lexType = LexType.INTCON;
             number = Integer.parseInt(token);
-            // if (!isSeparator(c)) {
-            //     throw new IllegalStateException();
-            // }
+            if (!isSeparator(c)) {
+                throw new IllegalStateException();
+            }
         }
         else {
             // 其他，switch处理各种符号
@@ -337,7 +337,7 @@ public class Lexer {
                     if (c == ' ' || c == '\t' || c == '\n') {
                         return "";
                     }
-                    // throw new IllegalStateException();
+                    throw new IllegalStateException();
                 }
             }
         }

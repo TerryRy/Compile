@@ -86,7 +86,7 @@ public class Lexer {
                 tokens.add(new Token(lexType, token, lineNum));
                 lexerPrinter(str);
             } catch (Exception e) {
-                lexerPrinter("错误！line = " + lineNum + " " + token + " " + lexType + "\n");
+                lexerPrinter("错误！line = " + lineNum + "\n");
             }
         }
     }
@@ -361,7 +361,7 @@ public class Lexer {
                 writer.write(str);
                 writer.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                // e.printStackTrace();
             }
             System.out.print(str);
         }
