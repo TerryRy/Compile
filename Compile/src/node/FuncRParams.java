@@ -21,10 +21,6 @@ public class FuncRParams implements Node {
         return expList;
     }
 
-    public List<Token> getCommas() {
-        return commas;
-    }
-
     @Override
     public void print(BufferedWriter writer) throws IOException {
         expList.get(0).print(writer);

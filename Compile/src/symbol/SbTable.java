@@ -17,26 +17,13 @@ public class SbTable<Map, Boolean, Integer> {
         return sb;
     }
 
-    public void setSb(Map sb) {
-        this.sb = sb;
-    }
-
     public java.lang.Boolean getIsFunc() {
         return isFunc;
-    }
-
-    public void setIsFunc(java.lang.Boolean isFunc) {
-        this.isFunc = isFunc;
     }
 
     public java.lang.Integer getFuncType() {
         return funcType;
     }
-
-    public void setFuncType(java.lang.Integer funcType) {
-        this.funcType = funcType;
-    }
-
 
     @Override
     public boolean equals(Object o) {

@@ -22,14 +22,6 @@ public class MainFuncDef implements Node {
         this.block = block;
     }
 
-    public Token getIntToken() {
-        return intToken;
-    }
-
-    public Token getMainToken() {
-        return mainToken;
-    }
-
     public Token getLb() {
         return lb;
     }

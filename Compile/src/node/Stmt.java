@@ -141,24 +141,12 @@ public class Stmt implements Node {
         return lVal;
     }
 
-    public Token getAssignToken() {
-        return assignToken;
-    }
-
     public Exp getExp() {
         return exp;
     }
 
-    public Token getSemicnToken() {
-        return semicnToken;
-    }
-
     public Block getBlock() {
         return block;
-    }
-
-    public Token getIfToken() {
-        return ifToken;
     }
 
     public Token getLb() {
@@ -177,14 +165,6 @@ public class Stmt implements Node {
         return stmtList;
     }
 
-    public Token getElseToken() {
-        return elseToken;
-    }
-
-    public Token getForToken() {
-        return forToken;
-    }
-
     public ForStmt getForStmt1() {
         return forStmt1;
     }
@@ -193,20 +173,12 @@ public class Stmt implements Node {
         return forStmt2;
     }
 
-    public List<Token> getSemicnTokenList() {
-        return semicnTokenList;
-    }
-
     public Token getBOrCToken() {
         return bOrCToken;
     }
 
     public Token getReturnToken() {
         return returnToken;
-    }
-
-    public Token getGetintToken() {
-        return getintToken;
     }
 
     public Token getPrintfToken() {
@@ -219,10 +191,6 @@ public class Stmt implements Node {
 
     public List<Exp> getExpList() {
         return expList;
-    }
-
-    public List<Token> getCommas() {
-        return commas;
     }
 
     @Override

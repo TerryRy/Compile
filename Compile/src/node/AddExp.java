@@ -22,10 +22,6 @@ public class AddExp implements Node {
         return mulExpList;
     }
 
-    public List<Token> getOpList() {
-        return opList;
-    }
-
     @Override
     public void print(BufferedWriter writer) throws IOException {
         mulExpList.get(0).print(writer);

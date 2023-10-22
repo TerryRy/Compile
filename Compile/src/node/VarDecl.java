@@ -21,20 +21,8 @@ public class VarDecl implements Node{
         this.semicn = semicn;
     }
 
-    public BType getBType() {
-        return bType;
-    }
-
     public List<VarDef> getVarDefList() {
         return varDefList;
-    }
-
-    public List<Token> getCommas() {
-        return commas;
-    }
-
-    public Token getSemicn() {
-        return semicn;
     }
 
     @Override

@@ -22,10 +22,6 @@ public class RelExp implements Node{
         return addExpList;
     }
 
-    public List<Token> getOpList() {
-        return opList;
-    }
-
     @Override
     public void print(BufferedWriter writer) throws IOException {
         addExpList.get(0).print(writer);

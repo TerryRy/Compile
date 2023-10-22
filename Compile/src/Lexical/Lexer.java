@@ -29,7 +29,7 @@ public class Lexer {
 
     static {
         // 创建不可变的Map并赋值给final变量
-        Map<String, LexType> tempMap = new HashMap<String, LexType>();
+        Map<String, LexType> tempMap = new HashMap<>();
         tempMap.put("main", LexType.MAINTK);
         tempMap.put("const", LexType.CONSTTK);
         tempMap.put("int", LexType.INTTK);
@@ -53,7 +53,7 @@ public class Lexer {
         lineNum = 0; // 行号可能在运算中修改，因此仅初始化一次。
         inExegesis = false;
 //        inFormatString = false;
-        BufferedWriter writer = null;
+        BufferedWriter writer;
         try {
             writer = new BufferedWriter(new FileWriter("./output.txt"));
             writer.write("");
@@ -95,7 +95,7 @@ public class Lexer {
     }
 
     // 总管单词获取和分析
-    public String next() throws Exception {
+    public String next() {
         char c = source.charAt(curPos++);
         while (Character.isSpaceChar(c) && curPos < source.length()) {
             c = source.charAt(curPos++);
@@ -111,10 +111,6 @@ public class Lexer {
             }
             return "";
         }
-//        if (isInFormatString()) {
-//
-//            return token;
-//        }
         token = "";
         lexType = null;
         number = 0;
@@ -131,10 +127,6 @@ public class Lexer {
                 }
             }
             reserve();
-            // if (!isSeparator(c)) {
-            //     throw new IllegalStateException();
-            // }
-
         }
         else if (Character.isDigit(c)) {
             // 是数字
@@ -150,9 +142,6 @@ public class Lexer {
             }
             lexType = LexType.INTCON;
             number = Integer.parseInt(token);
-            // if (!isSeparator(c)) {
-            //     throw new IllegalStateException();
-            // }
         }
         else {
             // 其他，switch处理各种符号
@@ -370,11 +359,6 @@ public class Lexer {
         return lexType + " " + token + '\n';
     }
 
-    private boolean isSeparator(char c) {
-        // 暂不考虑
-        return true;
-    }
-
     private void reserve() {
         lexType = reserveWords.getOrDefault(token, LexType.IDENFR);
     }
@@ -401,33 +385,9 @@ public class Lexer {
         return new Token(lexType, token, lineNum);
     }
 
-    public String getSource() {
-        return this.source;
-    }
-
     public void setSource(String source) {
         this.source = source;
         setLineNum(lineNum + 1);
-    }
-
-    public int getCurPos() {
-        return curPos;
-    }
-
-    public void setCurPos(int curPos) {
-        this.curPos = curPos;
-    }
-
-    public LexType getLexType() {
-        return lexType;
-    }
-
-    public void setLexType(LexType lexType) {
-        this.lexType = lexType;
-    }
-
-    public int getLineNum() {
-        return lineNum;
     }
 
     public void setLineNum(int lineNum) {
@@ -460,10 +420,6 @@ public class Lexer {
 
     public List<Token> getTokens() {
         return tokens;
-    }
-
-    public boolean isPrintAble() {
-        return printAble;
     }
 
     public void setPrintAble(boolean printAble) {

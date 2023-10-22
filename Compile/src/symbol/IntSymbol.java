@@ -14,15 +14,7 @@ public class IntSymbol extends Symbol {
         return constInt;
     }
 
-    public void setConstInt(boolean constInt) {
-        this.constInt = constInt;
-    }
-
     public int getDimension() {
         return dimension;
-    }
-
-    public void setDimension(int dimension) {
-        this.dimension = dimension;
     }
 }

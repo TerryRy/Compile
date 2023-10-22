@@ -33,10 +33,6 @@ public class Token {
         return lineNumber;
     }
 
-    public void setLineNumber(int lineNumber) {
-        this.lineNumber = lineNumber;
-    }
-
     @Override
     public String toString() {
         return type.toString() + " " + token + "\n";

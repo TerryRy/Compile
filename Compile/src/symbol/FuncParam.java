@@ -13,16 +13,8 @@ public class FuncParam {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public int getDimension() {
         return dimension;
-    }
-
-    public void setDimension(int dimension) {
-        this.dimension = dimension;
     }
 
     @Override

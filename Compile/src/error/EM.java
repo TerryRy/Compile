@@ -30,23 +30,15 @@ public class EM {
         return errors;
     }
 
-    public static void setErrors(List<Error> errors) {
-        EM.errors = errors;
-    }
-
     public static List<SbTable<Map<String, Symbol>, Boolean, Integer>> getSymbolTable() {
         return symbolTable;
-    }
-
-    public static void setSymbolTable(List<SbTable<Map<String, Symbol>, Boolean, Integer>> symbolTable) {
-        EM.symbolTable = symbolTable;
     }
 
     public void printErrors(BufferedWriter writer) throws IOException {
         errors.sort(Error::compareTo);
         for (Error error : errors) {
             writer.write(error.toString());
-            System.out.print(error.toString());
+            System.out.print(error);
         }
     }
 
@@ -61,7 +53,7 @@ public class EM {
     }
 
     // 删除当前块表（最深层块）
-    public void removeCurBolck() {
+    public void removeCurBlock() {
         symbolTable.remove(symbolTable.size() - 1);
     }
 
@@ -238,7 +230,7 @@ public class EM {
         TODO：文法不存在函数内定义函数，因此无需查更多层
         * */
         if (inCurBlock(funcDef.getIdent().getToken())) {
-            EM.getEM().addError(new Error(funcDef.getIdent().getLineNumber(), ErrorType.b));;
+            EM.getEM().addError(new Error(funcDef.getIdent().getLineNumber(), ErrorType.b));
             return;
         }
         // TODO:这不会错，跳过
@@ -261,10 +253,10 @@ public class EM {
         if (funcDef.getFuncFParams() != null) {
             funcFParamsError(funcDef.getFuncFParams());
         }
-        blockError(funcDef.getBlock(), true, funcDef.getFuncType().getType());
+        blockError(funcDef.getBlock(), true);
 
         // 函数返回，删除块表
-        removeCurBolck();
+        removeCurBlock();
     }
 
     public void mainFuncDefError(MainFuncDef mainFuncDef) {
@@ -272,8 +264,8 @@ public class EM {
         // 同样是块首，且不会重、漏
         putIn("main", new FuncSymbol("main", 1, new ArrayList<>()));
         symbolTable.add(new SbTable<>(new HashMap<>(), true, 1));
-        blockError(mainFuncDef.getBlock(), true, 1);
-        removeCurBolck();
+        blockError(mainFuncDef.getBlock(), true);
+        removeCurBlock();
     }
 
     public void funcFParamsError(FuncFParams funcFParams) {
@@ -292,7 +284,7 @@ public class EM {
         putIn(funcFParam.getIdent().getToken(), new IntSymbol(funcFParam.getIdent().getToken(), false, funcFParam.getLb().size()));
     }
 
-    public void blockError(Block block, boolean createdByFunc, int funcType) {
+    public void blockError(Block block, boolean createdByFunc) {
         // Block → '{' { BlockItem } '}'
 //        symbolTable.add(new SbTable<>(new HashMap<>(), createdByFunc, funcType));
         for (BlockItem blockItem : block.getBlockItemList()) {
@@ -306,7 +298,7 @@ public class EM {
                 }
             }
         }
-//        removeCurBolck();
+//        removeCurBlock();
     }
 
     public void blockItemError(BlockItem blockItem) {
@@ -354,8 +346,8 @@ public class EM {
             case Block: {
                 // Block
                 symbolTable.add(new SbTable<>(new HashMap<>(), false, -1));
-                blockError(stmt.getBlock(), false, -1);
-                removeCurBolck();
+                blockError(stmt.getBlock(), false);
+                removeCurBlock();
                 break;
             }
             case If: {

@@ -14,10 +14,6 @@ public class NumberNode implements Node {
         this.intConstToken = intConstToken;
     }
 
-    public Token getIntConstToken() {
-        return intConstToken;
-    }
-
     @Override
     public void print(BufferedWriter writer) throws IOException {
         writer.write(intConstToken.toString());

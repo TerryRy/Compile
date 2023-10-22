@@ -42,10 +42,6 @@ public class VarDef implements Node {
         return rb;
     }
 
-    public Token getAssignToken() {
-        return assignToken;
-    }
-
     public InitVal getInitVal() {
         return initVal;
     }

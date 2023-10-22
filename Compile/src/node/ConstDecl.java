@@ -24,24 +24,8 @@ public class ConstDecl implements Node{
         this.semicnToken = semicnToken;
     }
 
-    public Token getConstToken() {
-        return constToken;
-    }
-
-    public BType getBType() {
-        return bType;
-    }
-
     public List<ConstDef> getConstDefs() {
         return constDefs;
-    }
-
-    public List<Token> getCommas() {
-        return commas;
-    }
-
-    public Token getSemicnToken() {
-        return semicnToken;
     }
 
     @Override

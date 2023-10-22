@@ -46,10 +46,6 @@ public class UnaryExp implements Node {
         return rb;
     }
 
-    public UnaryOp getUnaryOp() {
-        return unaryOp;
-    }
-
     public UnaryExp getUnaryExp() {
         return unaryExp;
     }

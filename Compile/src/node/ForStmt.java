@@ -22,10 +22,6 @@ public class ForStmt implements Node {
         return lVal;
     }
 
-    public Token getAssignToken() {
-        return assignToken;
-    }
-
     public Exp getExp() {
         return exp;
     }

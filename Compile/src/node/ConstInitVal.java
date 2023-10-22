@@ -30,12 +30,9 @@ public class ConstInitVal implements Node {
     public Token getLb() {
         return lb;
     }
+
     public List<ConstInitVal> getConstInitValList() {
         return constInitValList;
-    }
-
-    public List<Token> getCommas() {
-        return commas;
     }
 
     public Token getRb() {

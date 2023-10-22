@@ -23,8 +23,4 @@ public class FuncSymbol extends Symbol {
     public List<FuncParam> getFuncParamList() {
         return funcParamList;
     }
-
-    public void setFuncParamList(List<FuncParam> funcParamList) {
-        this.funcParamList = funcParamList;
-    }
 }

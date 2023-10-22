@@ -16,14 +16,6 @@ public class FuncType implements Node {
         this.intToken = intToken;
     }
 
-    public Token getVoidToken() {
-        return voidToken;
-    }
-
-    public Token getIntToken() {
-        return intToken;
-    }
-
     public int getType() {
         if (voidToken != null) {
             return 0;

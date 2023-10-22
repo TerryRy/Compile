@@ -35,10 +35,6 @@ public class InitVal implements Node {
         return initValList;
     }
 
-    public List<Token> getCommas() {
-        return commas;
-    }
-
     public Token getRb() {
         return rb;
 

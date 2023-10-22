@@ -41,10 +41,6 @@ public class ConstDef implements Node {
         return rb;
     }
 
-    public Token getEqualToken() {
-        return equalToken;
-    }
-
     public ConstInitVal getConstInitVal() {
         return constInitVal;
     }
