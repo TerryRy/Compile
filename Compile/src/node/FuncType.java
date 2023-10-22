@@ -24,6 +24,15 @@ public class FuncType implements Node {
         return intToken;
     }
 
+    public int getType() {
+        if (voidToken != null) {
+            return 0;
+        }
+        else {
+            return 1;
+        }
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         if (voidToken != null) {

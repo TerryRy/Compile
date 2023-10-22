@@ -2,6 +2,9 @@ package Syntax;
 
 import Lexical.LexType;
 import Token.Token;
+import error.EM;
+import error.ErrorType;
+import error.Error;
 import node.*;
 
 import java.io.BufferedWriter;
@@ -92,14 +95,14 @@ public class Syner {
             }
             return tmpNow;
         } else if (tokenType == LexType.SEMICN) {
-            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.i));
-            return new Token(TokenType.SEMICN, tokens.get(index - 1).getLineNumber(), ";");
+            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.i));
+            return new Token(LexType.SEMICN, ";", tokens.get(index - 1).getLineNumber());
         } else if (tokenType == LexType.RPARENT) {
-            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.j));
-            return new Token(TokenType.RPARENT, tokens.get(index - 1).getLineNumber(), ")");
+            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.j));
+            return new Token(LexType.RPARENT, ")", tokens.get(index - 1).getLineNumber());
         } else if (tokenType == LexType.RBRACK) {
-            ErrorHandler.getInstance().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.k));
-            return new Token(TokenType.RBRACK, tokens.get(index - 1).getLineNumber(), "]");
+            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.k));
+            return new Token(LexType.RBRACK, "]", tokens.get(index - 1).getLineNumber());
         } else {
             throw new RuntimeException("Syntax error at line " + now.getLineNumber() + ": " + now.getToken() + " is not " + tokenType);
         }

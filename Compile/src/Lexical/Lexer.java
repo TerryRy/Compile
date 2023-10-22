@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.util.*;
 
 import Token.Token;
+import error.EM;
+import error.Error;
+import error.ErrorType;
 
 public class Lexer {
     private static Lexer lexer; // 单例模式
@@ -47,7 +50,7 @@ public class Lexer {
 
     public Lexer() {
         initLexer();
-        lineNum = -1; // 行号可能在运算中修改，因此仅初始化一次。
+        lineNum = 0; // 行号可能在运算中修改，因此仅初始化一次。
         inExegesis = false;
 //        inFormatString = false;
         BufferedWriter writer = null;
@@ -94,7 +97,7 @@ public class Lexer {
     // 总管单词获取和分析
     public String next() throws Exception {
         char c = source.charAt(curPos++);
-        while (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+        while (Character.isSpaceChar(c) && curPos < source.length()) {
             c = source.charAt(curPos++);
         }
         if (isInExegesis()) {
@@ -319,6 +322,7 @@ public class Lexer {
                     break;
                 }
                 case '"' : {
+                    boolean haveErrorA = false;
                     token += c;
                     lexType = LexType.STRCON;
                     while (curPos < source.length()) {
@@ -327,6 +331,28 @@ public class Lexer {
                         if (c == '"') {
                             break;
                         }
+                        if (c == 32 || c == 33 || (c >= 40 && c <= 126)) {
+                            if (c == '\\' &&  (curPos >= source.length() || source.charAt(curPos) != 'n')) {
+                                if (!haveErrorA) {
+                                    EM.getEM().addError(new Error(lineNum, ErrorType.a));
+                                    haveErrorA = true;
+                                }
+                            }
+                        }
+                        else if (c == '%') {
+                            if (curPos >= source.length() || source.charAt(curPos) != 'd') {
+                                if (!haveErrorA) {
+                                    EM.getEM().addError(new Error(lineNum, ErrorType.a));
+                                    haveErrorA = true;
+                                }
+                            }
+                        }
+                        else {
+                            if (!haveErrorA) {
+                                EM.getEM().addError(new Error(lineNum, ErrorType.a));
+                                haveErrorA = true;
+                            }
+                        }
                     }
                     if (c != '"' || token.equals("\"")) {
                         throw new IllegalStateException();
@@ -334,7 +360,7 @@ public class Lexer {
                     break;
                 }
                 default: {
-                    if (c == ' ' || c == '\t' || c == '\n') {
+                    if (Character.isSpaceChar(c)) {
                         return "";
                     }
                     // throw new IllegalStateException();
