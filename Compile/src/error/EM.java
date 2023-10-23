@@ -245,6 +245,7 @@ public class EM {
             for (FuncFParam funcFParam : funcDef.getFuncFParams().getFuncFParamList()) {
                 params.add(new FuncParam(funcFParam.getIdent().getToken(), funcFParam.getLb().size()));
             }
+            // 声明分析结束，填入符号表
             putIn(funcDef.getIdent().getToken(), new FuncSymbol(funcDef.getIdent().getToken(), funcDef.getFuncType().getType(), params));
         }
         // 函数添加完毕，建立该函数的块表

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.*;
 
 import Token.Token;
+import config.Config;
 import error.EM;
 import error.Error;
 import error.ErrorType;
@@ -320,26 +321,28 @@ public class Lexer {
                         if (c == '"') {
                             break;
                         }
-                        if (c == 32 || c == 33 || (c >= 40 && c <= 126)) {
-                            if (c == '\\' &&  (curPos >= source.length() || source.charAt(curPos) != 'n')) {
+                        if (Config.error) {
+                            if (c == 32 || c == 33 || (c >= 40 && c <= 126)) {
+                                if (c == '\\' &&  (curPos >= source.length() || source.charAt(curPos) != 'n')) {
+                                    if (!haveErrorA) {
+                                        EM.getEM().addError(new Error(lineNum, ErrorType.a));
+                                        haveErrorA = true;
+                                    }
+                                }
+                            }
+                            else if (c == '%') {
+                                if (curPos >= source.length() || source.charAt(curPos) != 'd') {
+                                    if (!haveErrorA) {
+                                        EM.getEM().addError(new Error(lineNum, ErrorType.a));
+                                        haveErrorA = true;
+                                    }
+                                }
+                            }
+                            else {
                                 if (!haveErrorA) {
                                     EM.getEM().addError(new Error(lineNum, ErrorType.a));
                                     haveErrorA = true;
                                 }
-                            }
-                        }
-                        else if (c == '%') {
-                            if (curPos >= source.length() || source.charAt(curPos) != 'd') {
-                                if (!haveErrorA) {
-                                    EM.getEM().addError(new Error(lineNum, ErrorType.a));
-                                    haveErrorA = true;
-                                }
-                            }
-                        }
-                        else {
-                            if (!haveErrorA) {
-                                EM.getEM().addError(new Error(lineNum, ErrorType.a));
-                                haveErrorA = true;
                             }
                         }
                     }

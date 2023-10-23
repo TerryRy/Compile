@@ -2,6 +2,7 @@ package Syntax;
 
 import Lexical.LexType;
 import Token.Token;
+import config.Config;
 import error.EM;
 import error.ErrorType;
 import error.Error;
@@ -94,15 +95,20 @@ public class Syner {
                 now = tokens.get(++index);
             }
             return tmpNow;
-        } else if (tokenType == LexType.SEMICN) {
-            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.i));
-            return new Token(LexType.SEMICN, ";", tokens.get(index - 1).getLineNumber());
-        } else if (tokenType == LexType.RPARENT) {
-            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.j));
-            return new Token(LexType.RPARENT, ")", tokens.get(index - 1).getLineNumber());
-        } else if (tokenType == LexType.RBRACK) {
-            EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.k));
-            return new Token(LexType.RBRACK, "]", tokens.get(index - 1).getLineNumber());
+        }
+        else if (Config.error) {
+            if (tokenType == LexType.SEMICN) {
+                EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.i));
+                return new Token(LexType.SEMICN, ";", tokens.get(index - 1).getLineNumber());
+            } else if (tokenType == LexType.RPARENT) {
+                EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.j));
+                return new Token(LexType.RPARENT, ")", tokens.get(index - 1).getLineNumber());
+            } else if (tokenType == LexType.RBRACK) {
+                EM.getEM().addError(new Error(tokens.get(index - 1).getLineNumber(), ErrorType.k));
+                return new Token(LexType.RBRACK, "]", tokens.get(index - 1).getLineNumber());
+            } else {
+                throw new RuntimeException("Syntax error at line " + now.getLineNumber() + ": " + now.getToken() + " is not " + tokenType);
+            }
         } else {
             throw new RuntimeException("Syntax error at line " + now.getLineNumber() + ": " + now.getToken() + " is not " + tokenType);
         }
