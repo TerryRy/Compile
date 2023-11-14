@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="29bb3b2d-136d-4473-ab4c-2d547870f303" name="变更" comment="">
-      <change beforePath="$PROJECT_DIR$/Compile/src/Compiler.java" beforeDir="false" afterPath="$PROJECT_DIR$/Compile/src/Compiler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Compile/src/Lexical/Lexer.java" beforeDir="false" afterPath="$PROJECT_DIR$/Compile/src/Lexical/Lexer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Compile/src/config/Config.java" beforeDir="false" afterPath="$PROJECT_DIR$/Compile/src/config/Config.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Compile/src/src.zip" beforeDir="false" afterPath="$PROJECT_DIR$/Compile/src/src.zip" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Compile/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Compile/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,21 +25,6 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/Compile" />
     <property name="settings.editor.selected.configurable" value="configurable.group.appearance" />
-  </component>
-  <component name="RunManager">
-    <configuration default="true" type="JetRunConfigurationType">
-      <module name="Compile" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
-      <module name="Compile" />
-      <option name="filePath" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
