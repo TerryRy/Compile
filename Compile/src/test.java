@@ -1,26 +1,19 @@
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class test {
     public static void main(String[] args) {
-        // 创建两个 Set
-        Set<String> set1 = new HashSet<>();
-        Set<String> set2 = new HashSet<>();
+        List<Integer> list = new ArrayList<Integer>();
+        list.add(0);
 
-        // 向第一个 Set 添加元素
-        set1.add("苹果");
-        set1.add("香蕉");
-        set1.add("橙子");
+        Integer a = getInteger(0, list);
+        a = 1;
+        System.out.println((int) '\n');
+    }
 
-        // 向第二个 Set 添加元素
-        set2.add("香蕉");
-        set2.add("葡萄");
-        set2.add("橙子");
-
-        set1.addAll(set2);
-        // 输出合并后的元素
-        for (String fruit : set1) {
-            System.out.println(fruit);
-        }
+    static Integer getInteger(int i, List<Integer> list) {
+        return list.get(i);
     }
 }

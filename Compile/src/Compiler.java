@@ -2,6 +2,7 @@ import Lexical.Lexer;
 import Syntax.Syner;
 import config.Config;
 import error.EM;
+import llvm.Llvm;
 
 import java.io.*;
 
@@ -39,6 +40,16 @@ public class Compiler {
                 if (EM.getEM().getErrors().size() > 0) {
                     return;
                 }
+            }
+
+            if (Config.llvm) {
+                Llvm.getLlvm().analyze(Syner.getSyner().getCompUnit());
+                BufferedWriter writerLlvm = new BufferedWriter(new FileWriter("./llvm_ir.txt"));
+                writerLlvm.write("");
+                writerLlvm.close();
+                writerLlvm = new BufferedWriter(new FileWriter("./llvm_ir.txt", true));
+                Llvm.getLlvm().llvmPrinter(writerLlvm);
+                writerLlvm.close();
             }
 
             writer.close();

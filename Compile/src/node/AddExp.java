@@ -18,6 +18,10 @@ public class AddExp implements Node {
         this.opList = opList;
     }
 
+    public List<Token> getOpList() {
+        return opList;
+    }
+
     public List<MulExp> getMulExpList() {
         return mulExpList;
     }

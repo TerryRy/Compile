@@ -28,6 +28,14 @@ public class ConstDecl implements Node{
         return constDefs;
     }
 
+    public List<Token> getCommas() {
+        return commas;
+    }
+
+    public BType getbType() {
+        return bType;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         writer.write(constToken.toString());

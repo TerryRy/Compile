@@ -46,6 +46,10 @@ public class VarDef implements Node {
         return initVal;
     }
 
+    public Token getAssignToken() {
+        return assignToken;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         writer.write(ident.toString());

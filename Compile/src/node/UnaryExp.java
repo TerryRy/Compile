@@ -50,6 +50,10 @@ public class UnaryExp implements Node {
         return unaryExp;
     }
 
+    public UnaryOp getUnaryOp() {
+        return unaryOp;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         if (primaryExp != null) {

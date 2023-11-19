@@ -22,6 +22,10 @@ public class MulExp implements Node {
         return unaryExpList;
     }
 
+    public List<Token> getOpList() {
+        return opList;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         unaryExpList.get(0).print(writer);

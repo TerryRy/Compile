@@ -13,6 +13,10 @@ public class BType implements Node {
         this.intToken = intToken;
     }
 
+    public Token getIntToken() {
+        return intToken;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         writer.write(intToken.toString());

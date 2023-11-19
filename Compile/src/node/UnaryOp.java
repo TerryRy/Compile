@@ -14,6 +14,10 @@ public class UnaryOp implements Node {
         this.opToken = opToken;
     }
 
+    public Token getOpToken() {
+        return opToken;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         writer.write(opToken.toString());

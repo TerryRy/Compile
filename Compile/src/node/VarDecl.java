@@ -25,6 +25,14 @@ public class VarDecl implements Node{
         return varDefList;
     }
 
+    public List<Token> getCommas() {
+        return commas;
+    }
+
+    public BType getbType() {
+        return bType;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         bType.print(writer);
