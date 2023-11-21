@@ -193,6 +193,10 @@ public class Stmt implements Node {
         return expList;
     }
 
+    public Token getElseToken() {
+        return elseToken;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         switch (type) {

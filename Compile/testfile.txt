@@ -1,23 +1,7 @@
-int test;
-
-int a1(int a) {
-    a = getint();
-    return a;
-}
-
-int main(){
-    int test = (test) + 2 * (2 % 3);
-    test = 1+1*(1+1)/2%3-4;
-    printf("%d\n", test);
-    int a = 1;
-    {
-    {
-    a = 0;
-    {};
-    }
-    }
-        a= a1(a1(a));
-
-    printf("%d\n", a);
-    return 1;
+int main() {
+    int a = 10;
+    int b = -5;
+    int result = a * b - 20 / 4 + 7 % 3;
+    printf("%d", result);
+    return 0;
 }

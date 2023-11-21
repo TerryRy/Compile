@@ -22,6 +22,10 @@ public class LAndExp implements Node {
         return eqExpList;
     }
 
+    public List<Token> getOpList() {
+        return opList;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         eqExpList.get(0).print(writer);

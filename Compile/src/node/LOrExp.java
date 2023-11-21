@@ -22,6 +22,10 @@ public class LOrExp implements Node {
         return lAndExpList;
     }
 
+    public List<Token> getOpList() {
+        return opList;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         lAndExpList.get(0).print(writer);

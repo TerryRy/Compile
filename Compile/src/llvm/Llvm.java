@@ -233,7 +233,6 @@ public class Llvm {
                     sb.append("\n");
         }
         else {
-            // TODO:局部变量
             /*
             %1 = alloca i32
             store i32 %2, i32* %1
@@ -273,9 +272,48 @@ public class Llvm {
     }
 
     // 强制类型转换，暂时没用
-    public String toType(Type type, String value) {
+    public String toType(Type type, Pair value) {
         // value也可能是寄存器，是寄存器的话似乎没什么意义
-        return value;
+        if (((IntegerType) value.getType()).compareTo((IntegerType) type) == 0) {
+            return value.getResult();
+        }
+        if (value.getResult().charAt(0) == '@' || value.getResult().charAt(0) == '%') {
+            if (((IntegerType) value.getType()).compareTo((IntegerType) type) > 0) {
+                // 大转小不会
+                return value.getResult();
+            }
+            else if (((IntegerType) value.getType()).compareTo((IntegerType) type) < 0){
+                String holdResult = "%" + baseBlockCounter;
+                baseBlockCounter++;
+                StringBuilder sb_add  = new StringBuilder("    ");
+                sb_add.append(holdResult)
+                        .append(" = add ")
+                        .append(type.toString())
+                        .append(" 0, ")
+                        .append(value.getResult())
+                        .append("\n");
+                addLlvm(sb_add.toString());
+                return holdResult;
+            }
+            else {
+                return value.getResult();
+            }
+        }
+        else {
+            int result_int = Integer.parseInt(value.getResult());
+            switch (type.toString()) {
+                case "i1": {
+                    return String.valueOf((char) result_int);
+                }
+                case "i32": {
+                    return String.valueOf((int) result_int);
+                }
+                default: {
+                    System.out.println("不存在的数据类型");
+                    return null;
+                }
+            }
+        }
     }
 
     /*
@@ -308,7 +346,6 @@ public class Llvm {
             }
         }
         addLlvm("\n");
-        // TODO: 处理funcDef
         if (compUnit.getFuncDefs() != null) {
             for (FuncDef funcDef : compUnit.getFuncDefs()) {
                 visitFuncDef(funcDef);
@@ -334,7 +371,7 @@ public class Llvm {
             Triple triple = visitVarDef(varDef, type);
             // 更新type 不更新，强制转化
 //            type = bigger(type, triple.getPair().getType());
-            addIdentLine(triple.getName(), type, toType(type, triple.getPair().getResult()), false, isGlobal);
+            addIdentLine(triple.getName(), type, toType(type, triple.getPair()), false, isGlobal);
             // 生成汇编码封装进addIdentLine
         }
     }
@@ -381,7 +418,7 @@ public class Llvm {
             Triple triple = visitConstDef(constDef);
             // 更新type,不更新，强制转化
 //            type = bigger(type, triple.getPair().getType());
-            addIdentLine(triple.getName(), type, toType(type, triple.getPair().getResult()), true, isGlobal);
+            addIdentLine(triple.getName(), type, toType(type, triple.getPair()), true, isGlobal);
             // 生成汇编码封装进addIdentLine
         }
     }
@@ -626,12 +663,44 @@ public class Llvm {
         }
         else if (stmt.getType() == Stmt.StmtType.Block) {
             // Block
-            // TODO:BLOCK
             visitBlock(stmt.getBlock(), null, false);
         }
         else if (stmt.getType() == Stmt.StmtType.If) {
             // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-            // TODO: If
+            // 分配2/3个基本块计数器，分为if else then，
+            String blockCond = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            addLlvm("    br label %" + blockCond + "\n");
+            if (stmt.getElseToken() != null) {
+                // 三个基本块
+                String blockIf = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                String blockElse = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                String blockThen = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                visitCond(stmt.getCond(), blockIf, blockElse, blockCond);
+                addLlvm(blockIf + ":\n");
+                visitStmt(stmt.getStmtList().get(0));
+                addLlvm("    br label %" + blockThen + "\n");
+                addLlvm(blockElse + "\n");
+                visitStmt(stmt.getStmtList().get(1));
+                addLlvm("    br label %" + blockThen + "\n");
+                addLlvm(blockThen + "\n");
+            }
+            else {
+                // 两个基本块
+                String blockIf = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                String blockThen = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                visitCond(stmt.getCond(), blockIf, blockThen, blockCond);
+                addLlvm(blockIf + ":\n");
+                visitStmt(stmt.getStmtList().get(0));
+                addLlvm("    br label %" + blockThen + "\n");
+                addLlvm(blockThen + "\n");
+
+            }
         }
         else if (stmt.getType() == Stmt.StmtType.For) {
             // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
@@ -730,6 +799,271 @@ public class Llvm {
         return null;
     }
 
+    public void visitCond(Cond cond, String blockTrue, String blockFalse, String blockCond) {
+        // Cond → LOrExp
+        addLlvm(blockCond + ":\n");
+        visitLOrExp(cond.getLOrExp(), blockTrue, blockFalse);
+    }
+
+    public void visitLOrExp(LOrExp lorExp, String blockTrue, String blockFalse) {
+        //  LOrExp → LAndExp | LOrExp '||' LAndExp
+        //  LOrExp → LAndExp { '||' LAndExp }
+        // ||后的部分临时生成一个LOrExp，相当于改成右递归
+        // 或运算有一个LAndExp成功了就可以跳转到blockTrue
+        String jumpTrue = blockTrue;
+        String jumpFalse;
+        if (lorExp.getLAndExpList().size() == 1) {
+            // 单LAndExp，失败直接jump到bockFalse
+            jumpFalse = blockFalse;
+            visitLAndExp(lorExp.getLAndExpList().get(0), jumpTrue, jumpFalse);
+        }
+        else {
+            /*
+            无脑计算第一个，如果满足短路条件直接跳过递归生成指令
+            若不满足短路条件那么刚刚计算过的第一个LAndExp也就没用了，在这里生成跳转到递归调用的位置的指令
+            换言之，成功通向blockTrue，失败通向新生成的递归位置，递归传入的block仍然是true和false两个
+             */
+            String lessLOrExpBlock = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            // 第一个失败jump到后面的"LOrExp"处
+            jumpFalse = lessLOrExpBlock;
+            visitLAndExp(lorExp.getLAndExpList().get(0), jumpTrue, jumpFalse);
+            addLlvm(lessLOrExpBlock + ":\n");
+            List<LAndExp> newLAndExpList = new ArrayList<>(lorExp.getLAndExpList());
+            newLAndExpList.remove(0);
+            List<Token> newOpList = new ArrayList<>(lorExp.getOpList());
+            newOpList.remove(0);
+            LOrExp curLOrExp = new LOrExp(newLAndExpList, newOpList);
+            visitLOrExp(curLOrExp, blockTrue, blockFalse);
+        }
+    }
+
+    public void visitLAndExp(LAndExp lAndExp, String blockTrue, String blockFalse) {
+        // LAndExp → EqExp | LAndExp '&&' EqExp
+        // LAndExp → EqExp { '&&' EqExp }
+        // && 后的部分临时生成一个EqExp,相当于临时改成右递归
+        // 与运算有一个LOrExp失败了就需要跳转到blockFlase
+        String jumpTrue;
+        String jumpFalse = blockFalse;
+        String lResult;
+        if (lAndExp.getEqExpList().size() == 1) {
+            // 单EqExp，为真直接jump到bockTrue
+            jumpTrue = blockTrue;
+            visitEqExp(lAndExp.getEqExpList().get(0), jumpTrue, jumpFalse);
+        }
+        else {
+            /*
+            无脑计算第一个，如果满足短路条件直接跳过递归生成指令
+            若不满足短路条件那么刚刚计算过的第一个EqExp也就没用了，在这里生成跳转到递归调用的位置的指令
+            换言之，成功通向blockTrue，失败通向新生成的递归位置，递归传入的block仍然是true和false两个
+             */
+            String lessLAndExpBlock = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            // 第一个为真jump到后面的"LAndExp"处
+            jumpTrue = lessLAndExpBlock;
+            visitEqExp(lAndExp.getEqExpList().get(0), jumpTrue, jumpFalse);
+            addLlvm(lessLAndExpBlock + ":\n");
+            List<EqExp> newEqList = new ArrayList<>(lAndExp.getEqExpList());
+            newEqList.remove(0);
+            List<Token> newOpList= new ArrayList<Token>(lAndExp.getOpList());
+            newOpList.remove(0);
+            LAndExp curLAndExp = new LAndExp(newEqList, newOpList);
+            visitLAndExp(curLAndExp, jumpTrue, jumpFalse);
+        }
+    }
+
+    public void visitEqExp(EqExp eqExp, String blockTrue, String blockFalse) {
+        //  EqExp → RelExp | EqExp ('==' | '!=') RelExp
+        //  EqExp → RelExp { ('==' | '!=') RelExp }
+        // OP后部分临时生成一个新EqExp
+        // 有OP时，单独的RelExp已经不足以判断真假，因而不再在EqExp内部生成跳转指令，转为返回计算结果
+        String jumpTrue = blockTrue;
+        String jumpFalse = blockFalse;
+        if (eqExp.getRelExpList().size() == 1) {
+            // 单RelExp，没有多余的逻辑直接跳向最终结果
+            jumpTrue = blockTrue;
+            Pair singlePair = visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
+//            if (eqExp.getRelExpList().get(0).getAddExpList().size() == 1) {
+//                // 单add，rel中没有该判断程序
+//            }
+            String lResult = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            StringBuilder sb_icmp = new StringBuilder("    ")
+                    .append(lResult)
+                    .append(" = icmp eq i32 1, ")
+                    .append(singlePair.getResult())
+                    .append("\n");
+            addLlvm(sb_icmp.toString());
+            StringBuilder sb_br = new StringBuilder("    ")
+                    .append("br i1 ")
+                    .append(lResult)
+                    .append(", label %")
+                    .append(jumpTrue)
+                    .append(", label %")
+                    .append(jumpFalse)
+                    .append("\n");
+            addLlvm(sb_br.toString());
+        }
+        else {
+            // 取前两个和第一个OP判断
+            String lessEqExpBlock = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            jumpTrue = lessEqExpBlock;
+            // visit第一个RelExp，内部出现错误直接跳转，成功跳转到内部递归
+            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
+            // 取两个原子元素和一个OP判断，若失败直接跳转，成功则跳转到递归位置
+            Pair onL = getLOfEq(eqExp);
+            Pair onR = getROfEq(eqExp);
+            String op;
+            if (eqExp.getOpList().get(0).getToken().equals("==")) {
+                // 相等判断
+                op = "eq";
+            }
+            else if (eqExp.getOpList().get(0).getToken().equals("!=")) {
+                // 不等判断
+                op = "ne";
+            }
+            else {
+                // 其他情况，暂时没有
+                return;
+            }
+            String lResult = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            Type type = bigger(onL.getType(), onR.getType());
+            StringBuilder sb_icmp = new StringBuilder("    ")
+                    .append(lResult)
+                    .append(" = icmp ")
+                    .append(op)
+                    .append(" ")
+                    .append(type.toString())
+                    .append(" ")
+                    .append(onL.getResult())
+                    .append(", ")
+                    .append(onR.getResult())
+                    .append("\n");
+            addLlvm(sb_icmp.toString());
+            StringBuilder sb_br = new StringBuilder("    ")
+                    .append("br i1 ")
+                    .append(lResult)
+                    .append(", label %")
+                    .append(jumpTrue)
+                    .append(", label %")
+                    .append(jumpFalse)
+                    .append("\n");
+            addLlvm(sb_br.toString());
+            // 递归
+            addLlvm(lessEqExpBlock + ":\n");
+            List<RelExp> newRelExpList = new ArrayList<>(eqExp.getRelExpList());
+            newRelExpList.remove(0);
+            List<Token> newOpList = new ArrayList<>(eqExp.getOpList());
+            newOpList.remove(0);
+            EqExp newEqExp = new EqExp(newRelExpList, newOpList);
+            visitEqExp(newEqExp, blockTrue, blockFalse);
+        }
+    }
+
+    public Pair getLOfEq(EqExp eqExp) {
+        return getLastOfRel(eqExp.getRelExpList().get(0));
+    }
+
+    public Pair getROfEq(EqExp eqExp) {
+        return  getFirstOfRel(eqExp.getRelExpList().get(1));
+    }
+
+    public Pair visitRelExp(RelExp relExp, String blockTrue, String blockFalse) {
+        // RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
+        // RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp }
+        String jumpTrue;
+        String jumpFalse = blockFalse;
+        if (relExp.getAddExpList().size() == 1) {
+            // 单add，直接返回
+            return visitAddExp(relExp.getAddExpList().get(0), false);
+        }
+        else {
+            // 多Add，取两个和一个op计算，遇到false直接返回0,true则跳转内部递归
+            // 弹一个add和一个op递归，全部通过再返回1
+            String lessRelBlock = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            jumpTrue = lessRelBlock;
+            Pair pair1 = getLOfRel(relExp);
+            Pair pair2 = getROfRel(relExp);
+            Type type = bigger(pair1.getType(), pair2.getType());
+            String op;
+            switch (relExp.getOpList().get(0).getToken()) {
+                case "<": {
+                    op = "ult";
+                    break;
+                }
+                case "<=": {
+                    op = "ule";
+                    break;
+                }
+                case ">": {
+                    op = "ugt";
+                    break;
+                }
+                case ">=": {
+                    op = "uge";
+                    break;
+                }
+                default: {
+                    // 其他情况，暂时没有
+                    return null;
+                }
+            }
+            String result = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            // %24 = icmp ne i32 0, 0
+            StringBuilder sb_icmp = new StringBuilder("    ")
+                    .append(result)
+                    .append(" = icmp ")
+                    .append(op)
+                    .append(" ")
+                    .append(type.toString())
+                    .append(" ")
+                    .append(pair1.getResult())
+                    .append(", ")
+                    .append(pair2.getResult())
+                    .append("\n");
+            addLlvm(sb_icmp.toString());
+            StringBuilder sb_br = new StringBuilder("    ")
+                    .append("br i1 ")
+                    .append(pair1.getResult())
+                    .append(", label %")
+                    .append(jumpTrue)
+                    .append(", label %")
+                    .append(jumpFalse)
+                    .append("\n");
+            addLlvm(sb_br.toString());
+
+            addLlvm(lessRelBlock + ":\n");
+            List<AddExp> newAddExpList = new ArrayList<>(relExp.getAddExpList());
+            newAddExpList.remove(0);
+            List<Token> newOpList = new ArrayList<>(relExp.getOpList());
+            newOpList.remove(0);
+            RelExp newRelExp = new RelExp(newAddExpList, newOpList);
+            visitRelExp(newRelExp, jumpTrue, jumpFalse);
+            // 其实没啥用
+            return new Pair(IntegerType.i32, toType(IntegerType.i32, new Pair(type, result)));
+        }
+    }
+
+    public Pair getLOfRel(RelExp relExp) {
+        return visitAddExp(relExp.getAddExpList().get(0),false);
+    }
+
+    public Pair getROfRel(RelExp relExp) {
+        return visitAddExp(relExp.getAddExpList().get(1), false);
+    }
+
+    public Pair getLastOfRel(RelExp relExp) {
+        return visitAddExp(relExp.getAddExpList().get(relExp.getAddExpList().size() - 1), false);
+    }
+
+    public Pair getFirstOfRel(RelExp relExp) {
+        return visitAddExp(relExp.getAddExpList().get(0), false);
+    }
+
     public Ident visitLVal(LVal lVal, String value, boolean update) {
         // LVal → Ident {'[' Exp ']'}
         if (lVal.getExpList() == null || lVal.getExpList().size() == 0) {
@@ -816,20 +1150,21 @@ public class Llvm {
             on2
             op
              */
-            Pair left = visitMulExp(addExp.getMulExpList().get(0), isLonely);
-            type1 = left.getType();
-            on1 = left.getResult();
-            // 将Mul op （）括号内的东西看做新的AddExp，相当于临时改成右递归文法
-            ArrayList<MulExp> newMulList = new ArrayList<>(addExp.getMulExpList());
-            newMulList.remove(0);
-            ArrayList<Token> newOpList = new ArrayList<>(addExp.getOpList());
-            newOpList.remove(0);
-            Pair right = visitAddExp(new AddExp(newMulList, newOpList), isLonely);
+            Pair right = visitMulExp(addExp.getMulExpList().get(addExp.getMulExpList().size() - 1), isLonely);
             type2 = right.getType();
             on2 = right.getResult();
+            // 将Mul op （）括号内的东西看做新的AddExp，相当于临时改成右递归文法
+            // 更新：右递归不行了，相当于给后面一层层套了括号，还得左递归
+            ArrayList<MulExp> newMulList = new ArrayList<>(addExp.getMulExpList());
+            newMulList.remove(newMulList.size() - 1);
+            ArrayList<Token> newOpList = new ArrayList<>(addExp.getOpList());
+            newOpList.remove(newOpList.size() - 1);
+            Pair left = visitAddExp(new AddExp(newMulList, newOpList), isLonely);
+            type1 = left.getType();
+            on1 = left.getResult();
             // 类型转换
             type = bigger(type1, type2);
-            op = (addExp.getOpList().get(0).getToken().equals("+")) ? "add" : "sub";
+            op = (addExp.getOpList().get(addExp.getOpList().size() - 1).getToken().equals("+")) ? "add" : "sub";
             if (on1.charAt(0) != '%' && on2.charAt(0) != '%') {
                 // 常量运算，直接算出结果
                 if (type == IntegerType.i32) {
@@ -895,20 +1230,21 @@ public class Llvm {
             on2
             op
              */
-            Pair left = visitUnaryExp(mulExp.getUnaryExpList().get(0), isLonely);
-            type1 = left.getType();
-            on1 = left.getResult();
-            // 将Unary op （）括号内的东西看做新的MulExp，相当于临时改成右递归文法
-            ArrayList<UnaryExp> newUnaryList = new ArrayList<>(mulExp.getUnaryExpList());
-            newUnaryList.remove(0);
-            ArrayList<Token> newOpList = new ArrayList<>(mulExp.getOpList());
-            newOpList.remove(0);
-            Pair right = visitMulExp(new MulExp(newUnaryList, newOpList), isLonely);
+            Pair right = visitUnaryExp(mulExp.getUnaryExpList().get(mulExp.getUnaryExpList().size() - 1), isLonely);
             type2 = right.getType();
             on2 = right.getResult();
+            // 将Unary op （）括号内的东西看做新的MulExp，相当于临时改成右递归文法
+            // 更新：右递归不行，需要左递归
+            ArrayList<UnaryExp> newUnaryList = new ArrayList<>(mulExp.getUnaryExpList());
+            newUnaryList.remove(newUnaryList.size() - 1);
+            ArrayList<Token> newOpList = new ArrayList<>(mulExp.getOpList());
+            newOpList.remove(newOpList.size() - 1);
+            Pair left = visitMulExp(new MulExp(newUnaryList, newOpList), isLonely);
+            type1 = left.getType();
+            on1 = left.getResult();
             // 类型转换
             type = bigger(type1, type2);
-            op = mulExp.getOpList().get(0).getToken();
+            op = mulExp.getOpList().get(mulExp.getOpList().size() - 1).getToken();
             switch (op) {
                 case "*":
                     op = "mul";
@@ -916,8 +1252,11 @@ public class Llvm {
                 case "/":
                     op = "sdiv";
                     break;
-                default:
+                case "%":
                     op = "srem";
+                    break;
+                default:
+                    return null;
             }
             if (on1.charAt(0) != '%' && on2.charAt(0) != '%') {
                 // 常量运算，直接算出结果,Mul不是最高级，不论lonely不lonely都可以直接返回立即数
@@ -931,8 +1270,11 @@ public class Llvm {
                         case "sdiv":
                             result = String.valueOf(one / two);
                             break;
-                        default:// "srem":
+                        case "srem":
                             result = String.valueOf(one % two);
+                            break;
+                        default:// "srem":
+                            return null;
                     }
                     return new Pair(type, result);
                 }
@@ -982,9 +1324,35 @@ public class Llvm {
                 addLlvm("    " + result + " = mul " + type.toString() + " " + "-1" + ", " + on + "\n");
                 return new Pair(type, result);
             }
+            else if (unaryExp.getUnaryOp().getOpToken().getToken().equals("!")){
+                // ! 条件表达式 是0得1否则得0
+                // icmp eq i32 0, UnaryExp
+                Pair pair = visitUnaryExp(unaryExp.getUnaryExp(), false);
+                if (pair.getResult().charAt(0) != '@' && pair.getResult().charAt(0) != '%') {
+                    // 常量，直接判断
+                    if (pair.getResult().equals("0")) {
+                        return new Pair(IntegerType.i32, "1");
+                    }
+                    else {
+                        return new Pair(IntegerType.i32, "0");
+                    }
+                }
+                else {
+                    result = "%a" + baseBlockCounter;
+                    baseBlockCounter++;
+                    StringBuilder sb_icmp = new StringBuilder("    ")
+                            .append(result)
+                            .append(" = icmp eq i32 0, ")
+                            .append(pair.getResult())
+                            .append("\n");
+                    addLlvm(sb_icmp.toString());
+                    return new Pair(IntegerType.i32, result);
+                }
+            }
             else {
-                // TODO: ! 条件表达式
-                return null;// 暂时
+                // 其他op，暂时没有
+                System.out.println("不存在的单目运算符");
+                return null;
             }
         }
         else {
