@@ -6,7 +6,6 @@ import java.util.Set;
 public class test {
     public static void main(String[] args) {
         List<Integer> list = new ArrayList<Integer>();
-        list.add(0);
         System.out.println(list);
         list.remove(0);
         System.out.println(list);

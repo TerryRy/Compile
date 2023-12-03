@@ -26,6 +26,10 @@ public class ForStmt implements Node {
         return exp;
     }
 
+    public Token getAssignToken() {
+        return assignToken;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         lVal.print(writer);

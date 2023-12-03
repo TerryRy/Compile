@@ -1,8 +1,10 @@
 package llvm;
 
+import Lexical.LexType;
 import Token.Token;
 import Type.LineFuncType;
 import Type.IntegerType;
+import Type.LineArrayType;
 import Type.Type;
 import Type.FuncVoidType;
 import llvm.Container.Pair;
@@ -274,45 +276,67 @@ public class Llvm {
     // 强制类型转换，暂时没用
     public String toType(Type type, Pair value) {
         // value也可能是寄存器，是寄存器的话似乎没什么意义
-        if (((IntegerType) value.getType()).compareTo((IntegerType) type) == 0) {
-            return value.getResult();
-        }
-        if (value.getResult().charAt(0) == '@' || value.getResult().charAt(0) == '%') {
-            if (((IntegerType) value.getType()).compareTo((IntegerType) type) > 0) {
-                // 大转小不会
+        if (type instanceof IntegerType) {
+            if (((IntegerType) value.getType()).compareTo((IntegerType) type) == 0) {
                 return value.getResult();
             }
-            else if (((IntegerType) value.getType()).compareTo((IntegerType) type) < 0){
-                String holdResult = "%" + baseBlockCounter;
-                baseBlockCounter++;
-                StringBuilder sb_add  = new StringBuilder("    ");
-                sb_add.append(holdResult)
-                        .append(" = add ")
-                        .append(type.toString())
-                        .append(" 0, ")
-                        .append(value.getResult())
-                        .append("\n");
-                addLlvm(sb_add.toString());
-                return holdResult;
+            if (value.getResult().charAt(0) == '@' || value.getResult().charAt(0) == '%') {
+                if (((IntegerType) value.getType()).compareTo((IntegerType) type) > 0) {
+                    // 大转小不会
+                    return value.getResult();
+                }
+                else if (((IntegerType) value.getType()).compareTo((IntegerType) type) < 0){
+                    String holdResult = "%" + baseBlockCounter;
+                    baseBlockCounter++;
+                    StringBuilder sb_add  = new StringBuilder("    ");
+                    sb_add.append(holdResult)
+                            .append(" = add ")
+                            .append(type.toString())
+                            .append(" 0, ")
+                            .append(value.getResult())
+                            .append("\n");
+                    addLlvm(sb_add.toString());
+                    return holdResult;
+                }
+                else {
+                    return value.getResult();
+                }
             }
             else {
+                int result_int = Integer.parseInt(value.getResult());
+                switch (type.toString()) {
+                    case "i1": {
+                        return String.valueOf((char) result_int);
+                    }
+                    case "i32": {
+                        return String.valueOf((int) result_int);
+                    }
+                    default: {
+                        System.out.println("不存在的数据类型");
+                        return null;
+                    }
+                }
+            }
+        }
+        else if (type instanceof LineArrayType) {
+            // 数组
+            if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) == 0) {
+                return value.getResult();
+            }
+            else if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) < 0) {
+                //大转小不会
+                return value.getResult();
+            }
+            else {
+                // 小转大
+                // 新开一个数组，每个元素都是value对应元素add0(检测到是全0则不用)
+                // 但我暂时不想写
                 return value.getResult();
             }
         }
         else {
-            int result_int = Integer.parseInt(value.getResult());
-            switch (type.toString()) {
-                case "i1": {
-                    return String.valueOf((char) result_int);
-                }
-                case "i32": {
-                    return String.valueOf((int) result_int);
-                }
-                default: {
-                    System.out.println("不存在的数据类型");
-                    return null;
-                }
-            }
+            System.out.println("不是普通变量也不是数组？");
+            return null;
         }
     }
 
@@ -386,7 +410,7 @@ public class Llvm {
             if (varDef.getAssignToken() == null) {
                 // 未初始化
                 // 未初始化value为0
-                pair = new Pair(type, "0");
+                pair = new Pair(type, "0", null, false);
             }
             else {
                 pair = visitInitVal(varDef.getInitVal());
@@ -446,17 +470,50 @@ public class Llvm {
         }
         else {
             // TODO: 数组
-            return null;
+            name = constDef.getIdent().getToken();
+            List<Pair> constExpList = new ArrayList<>();
+            for (ConstExp constExp : constDef.getConstExps()) {
+                constExpList.add(visitConstExp(constExp));
+            }
+            pair = visitConstInitVal(constDef.getConstInitVal());
+            // 只需要返回Triple，在addLine中统一生成中间代码
+            return new Triple(name, pair);
+            // 分配内存空间，ConstInitVal计算值后在这里传值
+            // ConstInitVal计算值
+            // 传值（store）
         }
     }
 
     public Pair visitConstInitVal(ConstInitVal constInitVal) {
         // ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
-        if (constInitVal.getConstInitValList() == null || constInitVal.getConstInitValList().size() == 0) {
+        if (constInitVal.getLb() == null) {
             return visitConstExp(constInitVal.getConstExp());
         }
         else {
             // TODO: 数组
+            if (constInitVal.getConstInitValList() == null || constInitVal.getConstInitValList().size() == 0) {
+                // "{""}",我也不知道为什么会有这种情况，大概是数组长度为0吧
+                List<Integer> lenList = new ArrayList<Integer>();
+                lenList.add(0);
+                // 好奇怪，也没法调用
+                List<Pair> pairs = new ArrayList<>();
+                pairs.add(null);
+                return new Pair(new LineArrayType(IntegerType.i32, IntegerType.i32, 0, 1, lenList), null, pairs, false);
+            }
+            else {
+                // 正常数组
+                // [3 x i32] [i32 1, i32 2, i32 0], [3 x i32] zeroinitializer]
+                // type [consInitVal, con···]
+                // zeroinitializer 不需要括号环绕
+                List<Pair> pairList = new ArrayList<Pair>();
+                for (ConstInitVal curConstInitVal : constInitVal.getConstInitValList()) {
+                    pairList.add(visitConstInitVal(curConstInitVal));
+                }
+                Type lowType = pairList.get(0).getType(); // 类型肯定是一样的
+                StringBuilder sb_value = new StringBuilder();
+                sb_value.append("[");
+
+            }
             return null;
         }
     }
@@ -482,7 +539,7 @@ public class Llvm {
         LineFuncType funcType = visitFuncType(funcDef.getFuncType());
         addFuncLine(funcDef.getIdent().getToken(), funcType, funcFParamList);
         // 看看后面的block
-        visitBlock(funcDef.getBlock(), funcFParamList, true);
+        visitBlock(funcDef.getBlock(), funcFParamList, true, null, null);
         addLlvm("}\n\n");
     }
 
@@ -551,12 +608,12 @@ public class Llvm {
         // node只用来描述作用域，闭上眼睛见block就建，所以封装进visitBlock
         // 建立并进入自己的节点，树结构搭建已封装
 //        addSonNode();
-        visitBlock(mainFuncDef.getBlock(), lineFuncFParams, true);
+        visitBlock(mainFuncDef.getBlock(), lineFuncFParams, true, null, null);
 //        returnNode();
         addLlvm("}\n");
     }
 
-    public void visitBlock(Block block, ArrayList<LineFuncFParam> lineFuncFParams, boolean funcCall) {
+    public void visitBlock(Block block, ArrayList<LineFuncFParam> lineFuncFParams, boolean funcCall, String blockBreak, String blockContinue) {
         // 里面有东西再说话，空块谁理你啊
         if (block.getBlockItemList() != null) {
             addSonNode();
@@ -581,7 +638,7 @@ public class Llvm {
 //            addLlvm("block" + baseBlockCounter++ + ":\n");
             Pair pair = null;
             for (BlockItem bi : block.getBlockItemList()) {
-                pair = visitBlockItem(bi);
+                pair = visitBlockItem(bi, blockBreak, blockContinue);
             }
             if (funcCall) {
                 StringBuilder sb = new StringBuilder("    ret ");
@@ -607,18 +664,18 @@ public class Llvm {
         }
     }
 
-    public Pair visitBlockItem(BlockItem bi) {
+    public Pair visitBlockItem(BlockItem bi, String blockBreak, String blockContinue) {
         // BlockItem → Decl | Stmt
         if (bi.getDecl() != null) {
             visitDecl(bi.getDecl(), false);
             return null;
         }
         else {
-            return visitStmt(bi.getStmt());
+            return visitStmt(bi.getStmt(), blockBreak, blockContinue);
         }
     }
 
-    public Pair visitStmt(Stmt stmt) {
+    public Pair visitStmt(Stmt stmt, String blockBreak, String blockContinue) {
         /*
         Stmt → LVal '=' Exp ';'
         | [Exp] ';'
@@ -663,7 +720,7 @@ public class Llvm {
         }
         else if (stmt.getType() == Stmt.StmtType.Block) {
             // Block
-            visitBlock(stmt.getBlock(), null, false);
+            visitBlock(stmt.getBlock(), null, false, blockBreak, blockContinue);
         }
         else if (stmt.getType() == Stmt.StmtType.If) {
             // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
@@ -681,12 +738,12 @@ public class Llvm {
                 baseBlockCounter++;
                 visitCond(stmt.getCond(), blockIf, blockElse, blockCond);
                 addLlvm(blockIf + ":\n");
-                visitStmt(stmt.getStmtList().get(0));
+                visitStmt(stmt.getStmtList().get(0), blockBreak, blockContinue);
                 addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockElse + "\n");
-                visitStmt(stmt.getStmtList().get(1));
+                addLlvm(blockElse + ":\n");
+                visitStmt(stmt.getStmtList().get(1), blockBreak, blockContinue);
                 addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockThen + "\n");
+                addLlvm(blockThen + ":\n");
             }
             else {
                 // 两个基本块
@@ -696,23 +753,78 @@ public class Llvm {
                 baseBlockCounter++;
                 visitCond(stmt.getCond(), blockIf, blockThen, blockCond);
                 addLlvm(blockIf + ":\n");
-                visitStmt(stmt.getStmtList().get(0));
+                visitStmt(stmt.getStmtList().get(0), blockBreak, blockContinue);
                 addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockThen + "\n");
+                addLlvm(blockThen + ":\n");
 
             }
         }
         else if (stmt.getType() == Stmt.StmtType.For) {
             // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
-            // TODO: For
+            //
+            /*
+            ForStmt1的变量需要进入stmt的作用域
+            目前不允许decl因此不做处理，若增加，只需修改visitBlock
+            将判断有无blockItem和建立Node，returnNode提到函数外，手动环绕
+            if(){
+                add
+                visit
+                return
+            }
+             */
+            // ForStmt1
+            if (stmt.getForStmt1() != null) {
+                visitForStmt(stmt.getForStmt1());
+            }
+            /*
+                br 1
+            block 1
+                cond 2 4
+            block 2
+                stmt
+                br 3
+            block 3
+                ForStmt2
+                br 1
+            block 4
+             */
+            // cond
+            // stmt
+            // ForStmt2
+            // 结束位置
+            // 暂时只写了无缺省的版本
+            String blockCond;
+            String blockStmt;
+            String blockForStmt2;
+            String blockOut;
+            blockCond = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            blockStmt = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            blockForStmt2 = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            blockOut = "a" + baseBlockCounter;
+            baseBlockCounter++;
+            addLlvm("    br label %" + blockCond + "\n");
+            // Cond缺省封装入visitCond
+            visitCond(stmt.getCond(), blockStmt, blockOut, blockCond);
+            addLlvm(blockStmt + ":\n");
+            visitStmt(stmt.getStmtList().get(0), blockOut, blockForStmt2);
+            addLlvm("    br label %" + blockForStmt2 + "\n");
+            addLlvm(blockForStmt2 + ":\n");
+            if (stmt.getForStmt2() != null) {
+                visitForStmt(stmt.getForStmt2());
+            }
+            addLlvm("    br label %" + blockCond + "\n");
+            addLlvm(blockOut + ":\n");
         }
         else if (stmt.getType() == Stmt.StmtType.Break) {
             // 'break' ';'
-            // TODO: break
+            addLlvm("    br label %" + blockBreak + "\n");
         }
         else if (stmt.getType() == Stmt.StmtType.Continue) {
             // 'continue' ';'
-            // TODO: continue
+            addLlvm("    br label %" + blockContinue + "\n");
         }
         else if (stmt.getType() == Stmt.StmtType.Return) {
             // 'return' [Exp] ';'
@@ -723,7 +835,7 @@ public class Llvm {
 //                addLlvm("    " + sb.toString() + "\n");
                 return pair;
             }
-            return new Pair(FuncVoidType.typeVoid, "void");
+            return new Pair(FuncVoidType.typeVoid, "void", null, false);
         }
         else if (stmt.getType() == Stmt.StmtType.LValGetint) {
             // LVal '=' 'getint''('')'';'
@@ -799,10 +911,22 @@ public class Llvm {
         return null;
     }
 
+    public void visitForStmt(ForStmt forStmt) {
+        //  ForStmt → LVal '=' Exp
+        Stmt curStmt = new Stmt(Stmt.StmtType.LValExp, forStmt.getLVal(), forStmt.getAssignToken(), forStmt.getExp(), new Token(LexType.SEMICN, ";", forStmt.getAssignToken().getLineNumber()));
+        visitStmt(curStmt, null, null);
+    }
+
     public void visitCond(Cond cond, String blockTrue, String blockFalse, String blockCond) {
         // Cond → LOrExp
         addLlvm(blockCond + ":\n");
-        visitLOrExp(cond.getLOrExp(), blockTrue, blockFalse);
+        if (cond == null) {
+            // 空默认真
+            addLlvm("    br label %" + blockTrue + "\n");
+        }
+        else {
+            visitLOrExp(cond.getLOrExp(), blockTrue, blockFalse);
+        }
     }
 
     public void visitLOrExp(LOrExp lorExp, String blockTrue, String blockFalse) {
@@ -882,33 +1006,23 @@ public class Llvm {
         if (eqExp.getRelExpList().size() == 1) {
             // 单RelExp，没有多余的逻辑直接跳向最终结果
             jumpTrue = blockTrue;
-            Pair singlePair = visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
+            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
 //            if (eqExp.getRelExpList().get(0).getAddExpList().size() == 1) {
 //                // 单add，rel中没有该判断程序
 //            }
-            String lResult = "%a" + baseBlockCounter;
-            baseBlockCounter++;
-            StringBuilder sb_icmp = new StringBuilder("    ")
-                    .append(lResult)
-                    .append(" = icmp eq i32 1, ")
-                    .append(singlePair.getResult())
-                    .append("\n");
-            addLlvm(sb_icmp.toString());
-            StringBuilder sb_br = new StringBuilder("    ")
-                    .append("br i1 ")
-                    .append(lResult)
-                    .append(", label %")
-                    .append(jumpTrue)
-                    .append(", label %")
-                    .append(jumpFalse)
-                    .append("\n");
-            addLlvm(sb_br.toString());
         }
         else {
             // 取前两个和第一个OP判断
-            String lessEqExpBlock = "a" + baseBlockCounter;
-            baseBlockCounter++;
-            jumpTrue = lessEqExpBlock;
+            String lessEqExpBlock = null;
+            if (eqExp.getRelExpList().size() == 2) {
+                // 不需要继续递归
+                jumpTrue = blockTrue;
+            }
+            else {
+                lessEqExpBlock = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                jumpTrue = lessEqExpBlock;
+            }
             // visit第一个RelExp，内部出现错误直接跳转，成功跳转到内部递归
             visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
             // 取两个原子元素和一个OP判断，若失败直接跳转，成功则跳转到递归位置
@@ -952,13 +1066,18 @@ public class Llvm {
                     .append("\n");
             addLlvm(sb_br.toString());
             // 递归
-            addLlvm(lessEqExpBlock + ":\n");
-            List<RelExp> newRelExpList = new ArrayList<>(eqExp.getRelExpList());
-            newRelExpList.remove(0);
-            List<Token> newOpList = new ArrayList<>(eqExp.getOpList());
-            newOpList.remove(0);
-            EqExp newEqExp = new EqExp(newRelExpList, newOpList);
-            visitEqExp(newEqExp, blockTrue, blockFalse);
+            if (eqExp.getRelExpList().size() == 2) {
+
+            }
+            else {
+                addLlvm(lessEqExpBlock + ":\n");
+                List<RelExp> newRelExpList = new ArrayList<>(eqExp.getRelExpList());
+                newRelExpList.remove(0);
+                List<Token> newOpList = new ArrayList<>(eqExp.getOpList());
+                newOpList.remove(0);
+                EqExp newEqExp = new EqExp(newRelExpList, newOpList);
+                visitEqExp(newEqExp, blockTrue, blockFalse);
+            }
         }
     }
 
@@ -970,21 +1089,47 @@ public class Llvm {
         return  getFirstOfRel(eqExp.getRelExpList().get(1));
     }
 
-    public Pair visitRelExp(RelExp relExp, String blockTrue, String blockFalse) {
+    public void visitRelExp(RelExp relExp, String blockTrue, String blockFalse) {
         // RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
         // RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp }
         String jumpTrue;
         String jumpFalse = blockFalse;
         if (relExp.getAddExpList().size() == 1) {
-            // 单add，直接返回
-            return visitAddExp(relExp.getAddExpList().get(0), false);
+            // 单add，直接跳转
+            jumpTrue = blockTrue;
+            Pair singlePair = visitAddExp(relExp.getAddExpList().get(0), false);
+            String lResult = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            StringBuilder sb_icmp = new StringBuilder("    ")
+                    .append(lResult)
+                    // 不用eq1，因为所有非0整数都是真，但不都eq1
+                    .append(" = icmp ne i32 0, ")
+                    .append(singlePair.getResult())
+                    .append("\n");
+            addLlvm(sb_icmp.toString());
+            StringBuilder sb_br = new StringBuilder("    ")
+                    .append("br i1 ")
+                    .append(lResult)
+                    .append(", label %")
+                    .append(jumpTrue)
+                    .append(", label %")
+                    .append(jumpFalse)
+                    .append("\n");
+            addLlvm(sb_br.toString());
         }
         else {
             // 多Add，取两个和一个op计算，遇到false直接返回0,true则跳转内部递归
             // 弹一个add和一个op递归，全部通过再返回1
-            String lessRelBlock = "a" + baseBlockCounter;
-            baseBlockCounter++;
-            jumpTrue = lessRelBlock;
+            String lessRelBlock = null; // 拉出来只是我不想再写一遍中间一大段
+            if (relExp.getAddExpList().size() == 2) {
+                // 无需继续递归
+                jumpTrue = blockTrue;
+            }
+            else {
+                lessRelBlock = "a" + baseBlockCounter;
+                baseBlockCounter++;
+                jumpTrue = lessRelBlock;
+            }
             Pair pair1 = getLOfRel(relExp);
             Pair pair2 = getROfRel(relExp);
             Type type = bigger(pair1.getType(), pair2.getType());
@@ -1008,7 +1153,7 @@ public class Llvm {
                 }
                 default: {
                     // 其他情况，暂时没有
-                    return null;
+                    return;
                 }
             }
             String result = "%a" + baseBlockCounter;
@@ -1028,23 +1173,25 @@ public class Llvm {
             addLlvm(sb_icmp.toString());
             StringBuilder sb_br = new StringBuilder("    ")
                     .append("br i1 ")
-                    .append(pair1.getResult())
+                    .append(result)
                     .append(", label %")
                     .append(jumpTrue)
                     .append(", label %")
                     .append(jumpFalse)
                     .append("\n");
             addLlvm(sb_br.toString());
+            if (relExp.getAddExpList().size() == 2) {
 
-            addLlvm(lessRelBlock + ":\n");
-            List<AddExp> newAddExpList = new ArrayList<>(relExp.getAddExpList());
-            newAddExpList.remove(0);
-            List<Token> newOpList = new ArrayList<>(relExp.getOpList());
-            newOpList.remove(0);
-            RelExp newRelExp = new RelExp(newAddExpList, newOpList);
-            visitRelExp(newRelExp, jumpTrue, jumpFalse);
-            // 其实没啥用
-            return new Pair(IntegerType.i32, toType(IntegerType.i32, new Pair(type, result)));
+            }
+            else {
+                addLlvm(lessRelBlock + ":\n");
+                List<AddExp> newAddExpList = new ArrayList<>(relExp.getAddExpList());
+                newAddExpList.remove(0);
+                List<Token> newOpList = new ArrayList<>(relExp.getOpList());
+                newOpList.remove(0);
+                RelExp newRelExp = new RelExp(newAddExpList, newOpList);
+                visitRelExp(newRelExp, jumpTrue, jumpFalse);
+            }
         }
     }
 
@@ -1126,7 +1273,7 @@ public class Llvm {
             if (!isLonely) {
                 // 被人调用，可以仅返回单独的立即数或寄存器，也就是不用生成算式
                 result = on2;
-                return new Pair(type, result);
+                return new Pair(type, result, null, false);
             }
             // 光杆Exp，因为add是最后一级必然需要生成一些东西来存结果，因而0+
 //            result = "%a" + getCurNode().getCurTCounter();
@@ -1137,7 +1284,7 @@ public class Llvm {
 //            op = "add";
 //            // 格式%2 = sub i32 0, %1
 //            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + "0" + ", " + on2 + "\n");
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
         else {
             /*
@@ -1173,7 +1320,7 @@ public class Llvm {
                     result = String.valueOf(op.equals("add") ? (one + two) : (one - two));
                     if (!isLonely) {
                         // 有人调用，可以直接返回单个值
-                        return new Pair(type, result);
+                        return new Pair(type, result, null, false);
                     }
                 }
                 else {
@@ -1187,7 +1334,7 @@ public class Llvm {
             baseBlockCounter++;
             // 格式%2 = sub i32 0, %1
             addLlvm("    " + result + " = " + op + " " + type.toString() + " " + on1 + ", " + on2 + "\n");
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
     }
 
@@ -1217,7 +1364,7 @@ public class Llvm {
 //            op = "mul";
             // 格式%2 = sub i32 0, %1
 //            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + "1" + ", " + on2 + "\n");
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
         else {
             /*
@@ -1276,7 +1423,7 @@ public class Llvm {
                         default:// "srem":
                             return null;
                     }
-                    return new Pair(type, result);
+                    return new Pair(type, result, null, false);
                 }
                 else {
                     // 其他类型，暂时还用不到
@@ -1289,7 +1436,7 @@ public class Llvm {
             baseBlockCounter++;
             // 格式%2 = sub i32 0, %1
             addLlvm("    " + result + " = " + op + " " + type.toString() + " " + on1 + ", " + on2 + "\n");
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
     }
 
@@ -1315,14 +1462,14 @@ public class Llvm {
                 if (on.charAt(0) != '%') {
                     // 又是常量运算，直接算出结果
                     result = String.valueOf(Integer.parseInt(on) * -1);
-                    return new Pair(type, result);
+                    return new Pair(type, result, null, false);
                 }
 //            result = "%a" + getCurNode().getCurTCounter();
 //            getCurNode().addCurTCounter();
                 result = "%a" + baseBlockCounter;
                 baseBlockCounter++;
                 addLlvm("    " + result + " = mul " + type.toString() + " " + "-1" + ", " + on + "\n");
-                return new Pair(type, result);
+                return new Pair(type, result, null, false);
             }
             else if (unaryExp.getUnaryOp().getOpToken().getToken().equals("!")){
                 // ! 条件表达式 是0得1否则得0
@@ -1331,10 +1478,10 @@ public class Llvm {
                 if (pair.getResult().charAt(0) != '@' && pair.getResult().charAt(0) != '%') {
                     // 常量，直接判断
                     if (pair.getResult().equals("0")) {
-                        return new Pair(IntegerType.i32, "1");
+                        return new Pair(IntegerType.i32, "1", null, false);
                     }
                     else {
-                        return new Pair(IntegerType.i32, "0");
+                        return new Pair(IntegerType.i32, "0", null, false);
                     }
                 }
                 else {
@@ -1346,7 +1493,7 @@ public class Llvm {
                             .append(pair.getResult())
                             .append("\n");
                     addLlvm(sb_icmp.toString());
-                    return new Pair(IntegerType.i32, result);
+                    return new Pair(IntegerType.i32, result, null, false);
                 }
             }
             else {
@@ -1395,7 +1542,7 @@ public class Llvm {
             }
             sb.append(")\n");
             addLlvm(sb.toString());
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
     }
 
@@ -1442,12 +1589,12 @@ public class Llvm {
                     .append("\n");
             addLlvm(sb.toString());
 //            }
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
         else {
             Type type = IntegerType.i32;
             String result = primaryExp.getNumber().getIntConstToken().getToken();
-            return new Pair(type, result);
+            return new Pair(type, result, null, false);
         }
     }
 }

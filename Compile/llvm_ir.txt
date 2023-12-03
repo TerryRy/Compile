@@ -6,17 +6,81 @@ declare void @putstr(i8*)
 
 define dso_local i32 @main() {
     %a1 = alloca i32
-    store i32 10, i32* %a1
+    store i32 1, i32* %a1
     %a2 = alloca i32
-    store i32 -5, i32* %a2
-    %a3 = load i32, i32* %a2
-    %a4 = load i32, i32* %a1
-    %a5 = mul i32 %a4, %a3
-    %a6 = sub i32 %a5, 5
-    %a7 = add i32 %a6, 1
-    %a8 = alloca i32
-    store i32 %a7, i32* %a8
-    %a9 = load i32, i32* %a8
-    call void @putint(i32 %a9)
+    store i32 0, i32* %a2
+    %a3 = load i32, i32* %a1
+    store i32 %a3, i32* %a2
+    %a4 = alloca i32
+    store i32 0, i32* %a4
+    %a5 = alloca i32
+    store i32 0, i32* %a5
+    %a6 = alloca i32
+    store i32 0, i32* %a6
+    %a7 = call i32 @getint()
+    store i32 %a7, i32* %a5
+    %a8 = load i32, i32* %a1
+    %a9 = load i32, i32* %a1
+    %a10 = mul i32 %a9, %a8
+    store i32 %a10, i32* %a6
+    br label %a11
+a11:
+    %a15 = load i32, i32* %a6
+    %a16 = load i32, i32* %a5
+    %a17 = add i32 %a16, 1
+    %a18 = icmp ult i32 %a15, %a17
+    br i1 %a18, label %a12, label %a14
+a12:
+    %a19 = load i32, i32* %a2
+    store i32 %a19, i32* %a4
+    %a20 = load i32, i32* %a2
+    %a21 = load i32, i32* %a1
+    %a22 = add i32 %a21, %a20
+    store i32 %a22, i32* %a2
+    %a23 = load i32, i32* %a4
+    store i32 %a23, i32* %a1
+    br label %a24
+a24:
+    %a27 = load i32, i32* %a6
+    %a28 = srem i32 %a27, 2
+    %a29 = icmp ne i32 0, %a28
+    br i1 %a29, label %a25, label %a26
+    %a30 = load i32, i32* %a6
+    %a31 = srem i32 %a30, 2
+    %a32 = icmp eq i32 %a31, 1
+    br i1 %a32, label %a25, label %a26
+a25:
+    br label %a13
+    br label %a26
+a26:
+    call void @putch(i32 114)
+    call void @putch(i32 111)
+    call void @putch(i32 117)
+    call void @putch(i32 110)
+    call void @putch(i32 100)
+    call void @putch(i32 32)
+    %a33 = load i32, i32* %a6
+    call void @putint(i32 %a33)
+    call void @putch(i32 58)
+    call void @putch(i32 32)
+    %a34 = load i32, i32* %a1
+    call void @putint(i32 %a34)
+    call void @putch(i32 10)
+    br label %a35
+a35:
+    %a38 = load i32, i32* %a6
+    %a39 = icmp ugt i32 %a38, 19
+    br i1 %a39, label %a36, label %a37
+a36:
+    br label %a14
+    br label %a37
+a37:
+    br label %a13
+a13:
+    %a40 = load i32, i32* %a6
+    %a41 = add i32 %a40, 1
+    store i32 %a41, i32* %a6
+    br label %a11
+a14:
     ret i32 0
 }
