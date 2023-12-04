@@ -6,8 +6,8 @@ public class LineArrayType extends LineFuncType implements Type {
     private Type elementType; // 元素类型，多维数组元素类型为低维数组，即ArrayType
     private IntegerType baseType; // 最低维普通变量类型，暂时仅有IntegerType
     private int len; // 当前维度长度
-    private int dimension; // 维度数
-    private List<Integer> lenList; // 所有维度长度
+    private int dimension; // 每个元素维度数，+1就是当前层级
+    private List<Integer> lenList; // 所有维度长度,零维认为长度是1
 
     public LineArrayType(Type elementType, IntegerType baseType, int len, int dimension, List<Integer> lenList) {
         this.elementType = elementType;
@@ -44,6 +44,18 @@ public class LineArrayType extends LineFuncType implements Type {
     @Override
     public String toString() {
         // [length x [length x IntegerType]]
-        return "[" + this.len + " x " + this.elementType.toString() + "]";
+        if (this.len == -1) {
+            // 函数形参中的变长
+            return this.elementType.toString() + "*";
+        }
+        else {
+            return "[" + this.len + " x " + this.elementType.toString() + "]";
+        }
     }
+
+    @Override
+    public String toStringForCall() {
+        return this.elementType.toString() + "*";
+    }
+
 }

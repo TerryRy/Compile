@@ -15,4 +15,9 @@ public class LineFuncType implements Type {
     public String toString() {
         return returnType.toString();
     }
+
+    @Override
+    public String toStringForCall() {
+        return null;
+    }
 }

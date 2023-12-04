@@ -39,6 +39,10 @@ public class FuncFParam implements Node {
         return rb;
     }
 
+    public List<ConstExp> getConstExpList() {
+        return constExpList;
+    }
+
     @Override
     public void print(BufferedWriter writer) throws IOException {
         bType.print(writer);

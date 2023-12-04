@@ -37,6 +37,10 @@ public class IntegerType extends LineFuncType implements Type, Comparable<Intege
         return "i" + bit;
     }
 
+    @Override
+    public String toStringForCall() {
+        return this.toString();
+    }
 
     @Override
     public int compareTo(IntegerType other) {

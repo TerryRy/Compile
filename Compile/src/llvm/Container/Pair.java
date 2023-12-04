@@ -22,6 +22,10 @@ public class Pair {
         return first;
     }
 
+    public String getTypeForCall() {
+        return first.toStringForCall();
+    }
+
     public void setType(Type first) {
         this.first = first;
     }
@@ -49,6 +53,11 @@ public class Pair {
 
     public boolean isArray() {
         return getDimension() != 0;
+    }
+
+    public boolean isOneArray() {
+        // 是一维数组
+        return getDimension() != 1;
     }
 
     public boolean getIsZero() {

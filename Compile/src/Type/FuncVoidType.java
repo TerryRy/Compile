@@ -11,4 +11,9 @@ public class FuncVoidType extends LineFuncType implements Type {
     public String toString() {
         return "void";
     }
+
+    @Override
+    public String toStringForCall() {
+        return null;
+    }
 }

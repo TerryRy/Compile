@@ -14,7 +14,16 @@ public class LineIdent extends TreeTableLine {
         this.isConst = isConst;
     }
 
+    public Type getLineIdentType() {
+        return null;
+    }
+
+    public String getValue() {
+        return null;
+    }
+
     public boolean getIsConst() {
         return this.isConst;
     }
+
 }

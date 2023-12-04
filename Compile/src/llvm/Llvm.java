@@ -77,13 +77,13 @@ public class Llvm {
     }
 
     // 向外查找符号，可以不断访问Node的parentNode
-    public Ident findLVal(String name) {
+    public LineIdent findLVal(String name) {
         TableNode curNode = getCurNode();
         while (curNode.getParentNode() != -1) {
             for (int i = curNode.getLines().size() - 1; i >= 0; i--) {
                 if (curNode.getLines().get(i) instanceof LineIdent) {
                     if (curNode.getLines().get(i).getName().equals(name)) {
-                        return (Ident) curNode.getLines().get(i);
+                        return (LineIdent) curNode.getLines().get(i);
                     }
                 }
             }
@@ -93,7 +93,7 @@ public class Llvm {
             for (int i = curNode.getLines().size() - 1; i >= 0; i--) {
                 if (curNode.getLines().get(i) instanceof LineIdent) {
                     if (curNode.getLines().get(i).getName().equals(name)) {
-                        return (Ident) curNode.getLines().get(i);
+                        return (LineIdent) curNode.getLines().get(i);
                     }
                 }
             }
@@ -121,7 +121,7 @@ public class Llvm {
     }
 
     // 向外查找符号，找到则需改掉其 值
-    public Ident findAndChangeLVal(String name, String value) {
+    public Ident findAndChangeLVal(String name, String value, List<Integer> coordinate) {
         TableNode curNode = getCurNode();
         while (curNode.getParentNode() != -1) {
             for (int i = curNode.getLines().size() - 1; i >= 0; i--) {
@@ -180,7 +180,6 @@ public class Llvm {
 //        curNode.addCurTCounter();
         baseBlockCounter++;
         curNode.addLine(lineFunc);
-        // 将
         // 添加汇编码
         StringBuilder sb = new StringBuilder("");
         if (fParamList.size() > 0) {
@@ -188,32 +187,34 @@ public class Llvm {
             Type type = IntegerType.i32; // 默认i32
             if (lineIdent instanceof Ident) {
                 type = ((Ident) lineIdent).getLineIdentType();
+                sb.append(type.toString());
             }
             else if (lineIdent instanceof Array) {
-                // TODO: 数组
+                type = ((LineArrayType) ((Array) lineIdent).getLineIdentType()).getElementType();
+                sb.append(type.toString()).append("*");
             }
-            sb.append(type)
-                    .append(" ")
-                    .append(lineIdent.getTNum());
+            sb.append(" ").append(lineIdent.getTNum());
         }
         for (int i = 1; i < fParamList.size(); i++) {
             LineIdent lineIdent = fParamList.get(i).getLineIdent();
             Type type = IntegerType.i32; // 默认i32
+            sb.append(", ");
             if (lineIdent instanceof Ident) {
-                type = ((Ident) lineIdent).getLineIdentType();
+                type = lineIdent.getLineIdentType();
+                sb.append(type.toString());
             }
             else if (lineIdent instanceof Array) {
-                // TODO: 数组
+                type = lineIdent.getLineIdentType();
+                sb.append(type.toString());
             }
-            sb.append(", ")
-                    .append(type)
-                    .append(" ")
-                    .append(lineIdent.getTNum());;
+            sb.append(" ").append(lineIdent.getTNum());
         }
         addLlvm("define dso_local" + " " + funcType.toString() + " " + "@" + token + "(" + sb.toString() + ") {\n");
     }
 
-    public void addIdentLine(String name, Type type, String value, boolean isConst, boolean isGlobal) {
+    public void addIdentLine(String name, Pair pair, boolean isConst, boolean isGlobal) {
+        Type type = pair.getType();
+        String value = pair.getResult();
         TableNode curNode = getCurNode();
         StringBuilder sb = new StringBuilder("");
         if (isGlobal) {
@@ -233,6 +234,7 @@ public class Llvm {
                                 .append(value);
                     }
                     sb.append("\n");
+                    addLlvm(sb.toString());
         }
         else {
             /*
@@ -244,8 +246,6 @@ public class Llvm {
 //            curNode.addCurTCounter();
             String tNum = "%a" + baseBlockCounter;
             baseBlockCounter++;
-            Ident ident = new Ident(name, tNum, isConst, curBbNum, type, value);
-            curNode.addLine(ident);
             // 生成汇编码
             // alloca
             sb.append("    ")
@@ -253,19 +253,128 @@ public class Llvm {
                     .append(" = alloca ")
                     .append(type.toString())
                     .append("\n");
-            if (value != null) {
+            if (type instanceof IntegerType) {
+                Ident ident = new Ident(name, tNum, isConst, curBbNum, type, value);
+                curNode.addLine(ident);
+                if (value != null) {
                     sb.append("    store ")
-                          .append(type)
-                          .append(" ")
-                          .append(value)
-                          .append(", ")
-                          .append(type)
-                          .append("* ")
-                          .append(tNum)
-                          .append("\n");
+                            .append(type)
+                            .append(" ")
+                            .append(value)
+                            .append(", ")
+                            .append(type)
+                            .append("* ")
+                            .append(tNum)
+                            .append("\n");
+                }
+                addLlvm(sb.toString());
+            }
+            else {
+                // 数组
+                Array array = new Array(name, tNum, isConst, pair.getType(), curBbNum, value);
+                curNode.addLine(array);
+                if (((LineArrayType) type).getLen() == -1) {
+                    // 函数形参
+                    sb.append("    store ")
+                            .append(type)
+                            .append(" ")
+                            .append(value)
+                            .append(", ")
+                            .append(type)
+                            .append("* ")
+                            .append(tNum)
+                            .append("\n");
+                    addLlvm(sb.toString());
+                }
+                else {
+                    // 正经初始化
+                    addLlvm(sb.toString());
+                    initArray(new ArrayList<Integer>(), pair, pair, tNum);
+                }
             }
         }
-        addLlvm(sb.toString());
+    }
+
+    // coordinate为递归到这里时上方积累的每个维度的偏移,显然都是普通变量
+    // allType为原始待赋值数组的类型
+    // pair为递归到这里待赋值的“子数组”容器
+    public void initArray(List<Integer> coordinate, Pair allPair, Pair curPair, String tNum) {
+        /*
+        %2 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 0, i32 0
+        store i32 1, i32* %2
+        %3 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 0, i32 1
+        store i32 2, i32* %3
+        %4 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 0, i32 2
+        store i32 3, i32* %4
+        %5 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 1, i32 0
+        store i32 0, i32* %5
+        %6 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 1, i32 1
+        store i32 0, i32* %6
+        %7 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]*%1, i32 0, i32 1, i32 2
+        store i32 0, i32* %7
+        */
+        int len = ((LineArrayType) curPair.getType()).getLen();
+        if (((LineArrayType) curPair.getType()).getDimension() == 0) {
+            // 递归尽头
+            for (int i = 0; i < len; i++) {
+                coordinate.add(i);
+                // 取地址
+                String result = "%a" + baseBlockCounter;
+                baseBlockCounter++;
+                StringBuilder sb = new StringBuilder("    ");
+                sb.append(result)
+                        .append(" = getelementptr ")
+                        .append(allPair.getType().toString())
+                        .append(", ")
+                        .append(allPair.getType().toString())
+                        .append(" * ")
+                        .append(tNum)
+                        // 赠送一个0，意为不做最高维的位移（废话初始化一步到位取地址为什么要在最高维位移
+                        .append(", i32 0");
+                for (Integer integer : coordinate) {
+                    sb.append(", i32 ").append(String.valueOf(integer));
+                }
+                sb.append("\n");
+                addLlvm(sb.toString());
+
+                // 存值
+                StringBuilder sb_store = new StringBuilder("    ");
+                sb_store.append("store ");
+                sb_store.append(((LineArrayType) allPair.getType()).getBaseType())
+                        .append(" ")
+                        .append(readArrayValue(allPair, coordinate).getResult())
+                        .append(", ")
+                        .append(((LineArrayType) allPair.getType()).getBaseType())
+                        .append("* ")
+                        .append(result)
+                        .append("\n");
+                addLlvm(sb_store.toString());
+                coordinate.remove(coordinate.size() - 1);
+            }
+        }
+        else {
+            for (int i = 0; i < len; i++) {
+                coordinate.add(i);
+                initArray(coordinate, allPair, readArrayValue(allPair, coordinate), tNum);
+                // 回退，下一遍循环写入新的值
+                coordinate.remove(coordinate.size() - 1);
+            }
+        }
+    }
+
+    public Pair readArrayValue(Pair pair, List<Integer> coordinate) {
+//        Type arrayType = pair.getType();
+//        String value = pair.getResult();
+        Pair lowPair = pair.getPairs().get(coordinate.get(0));
+        List<Integer> lowCoordinate = new ArrayList<>(coordinate);
+        lowCoordinate.remove(0);
+        if (lowCoordinate.size() > 0) {
+            return readArrayValue(lowPair, lowCoordinate);
+        }
+        else {
+            // 递归尽头
+            return lowPair;
+        }
     }
 
     // 完成基本块编译，返回父节点
@@ -275,69 +384,73 @@ public class Llvm {
 
     // 强制类型转换，暂时没用
     public String toType(Type type, Pair value) {
+        return value.getResult();
         // value也可能是寄存器，是寄存器的话似乎没什么意义
-        if (type instanceof IntegerType) {
-            if (((IntegerType) value.getType()).compareTo((IntegerType) type) == 0) {
-                return value.getResult();
-            }
-            if (value.getResult().charAt(0) == '@' || value.getResult().charAt(0) == '%') {
-                if (((IntegerType) value.getType()).compareTo((IntegerType) type) > 0) {
-                    // 大转小不会
-                    return value.getResult();
-                }
-                else if (((IntegerType) value.getType()).compareTo((IntegerType) type) < 0){
-                    String holdResult = "%" + baseBlockCounter;
-                    baseBlockCounter++;
-                    StringBuilder sb_add  = new StringBuilder("    ");
-                    sb_add.append(holdResult)
-                            .append(" = add ")
-                            .append(type.toString())
-                            .append(" 0, ")
-                            .append(value.getResult())
-                            .append("\n");
-                    addLlvm(sb_add.toString());
-                    return holdResult;
-                }
-                else {
-                    return value.getResult();
-                }
-            }
-            else {
-                int result_int = Integer.parseInt(value.getResult());
-                switch (type.toString()) {
-                    case "i1": {
-                        return String.valueOf((char) result_int);
-                    }
-                    case "i32": {
-                        return String.valueOf((int) result_int);
-                    }
-                    default: {
-                        System.out.println("不存在的数据类型");
-                        return null;
-                    }
-                }
-            }
-        }
-        else if (type instanceof LineArrayType) {
-            // 数组
-            if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) == 0) {
-                return value.getResult();
-            }
-            else if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) < 0) {
-                //大转小不会
-                return value.getResult();
-            }
-            else {
-                // 小转大
-                // 新开一个数组，每个元素都是value对应元素add0(检测到是全0则不用)
-                // 但我暂时不想写
-                return value.getResult();
-            }
-        }
-        else {
-            System.out.println("不是普通变量也不是数组？");
-            return null;
-        }
+//        if (value.getResult().equals("zeroinitializer")) {
+//            return value.getResult();
+//        }
+//        if (type instanceof IntegerType) {
+//            if (((IntegerType) value.getType()).compareTo((IntegerType) type) == 0) {
+//                return value.getResult();
+//            }
+//            if (value.getResult().charAt(0) == '@' || value.getResult().charAt(0) == '%') {
+//                if (((IntegerType) value.getType()).compareTo((IntegerType) type) > 0) {
+//                    // 大转小不会
+//                    return value.getResult();
+//                }
+//                else if (((IntegerType) value.getType()).compareTo((IntegerType) type) < 0){
+//                    String holdResult = "%" + baseBlockCounter;
+//                    baseBlockCounter++;
+//                    StringBuilder sb_add  = new StringBuilder("    ");
+//                    sb_add.append(holdResult)
+//                            .append(" = add ")
+//                            .append(type.toString())
+//                            .append(" 0, ")
+//                            .append(value.getResult())
+//                            .append("\n");
+//                    addLlvm(sb_add.toString());
+//                    return holdResult;
+//                }
+//                else {
+//                    return value.getResult();
+//                }
+//            }
+//            else {
+//                int result_int = Integer.parseInt(value.getResult());
+//                switch (type.toString()) {
+//                    case "i1": {
+//                        return String.valueOf((char) result_int);
+//                    }
+//                    case "i32": {
+//                        return String.valueOf((int) result_int);
+//                    }
+//                    default: {
+//                        System.out.println("不存在的数据类型");
+//                        return null;
+//                    }
+//                }
+//            }
+//        }
+//        else if (type instanceof LineArrayType) {
+//            // 数组
+//            if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) == 0) {
+//                return value.getResult();
+//            }
+//            else if (((LineArrayType) type).getBaseType().compareTo(((LineArrayType) value.getType()).getBaseType()) < 0) {
+//                //大转小不会
+//                return value.getResult();
+//            }
+//            else {
+//                // 小转大
+//                // 新开一个数组，每个元素都是value对应元素add0(检测到是全0则不用)
+//                // 但我暂时不想写
+//                return value.getResult();
+//            }
+//        }
+//        else {
+//            System.out.println("不是普通变量也不是数组？");
+//            return null;
+//        }
     }
 
     /*
@@ -392,15 +505,15 @@ public class Llvm {
         // VarDecl → BType VarDef { ',' VarDef } ';'
         Type type = visitBType(varDecl.getbType());
         for (VarDef varDef : varDecl.getVarDefList()) {
-            Triple triple = visitVarDef(varDef, type);
+            Triple triple = visitVarDef(varDef, type, isGlobal);
             // 更新type 不更新，强制转化
 //            type = bigger(type, triple.getPair().getType());
-            addIdentLine(triple.getName(), type, toType(type, triple.getPair()), false, isGlobal);
+            addIdentLine(triple.getName(), triple.getPair(), false, isGlobal);
             // 生成汇编码封装进addIdentLine
         }
     }
 
-    public Triple visitVarDef(VarDef varDef, Type type) {
+    public Triple visitVarDef(VarDef varDef, Type type, boolean isGlobal) {
         // VarDef → Ident { '[' ConstExp ']' } | Ident { '[' ConstExp ']' } '=' InitVal
         // VarDef → Ident { '[' ConstExp ']' } [ '=' InitVal ]
         String name;
@@ -410,28 +523,122 @@ public class Llvm {
             if (varDef.getAssignToken() == null) {
                 // 未初始化
                 // 未初始化value为0
-                pair = new Pair(type, "0", null, false);
+                pair = new Pair(type, "0", null, true);
             }
             else {
-                pair = visitInitVal(varDef.getInitVal());
+                pair = visitInitVal(varDef.getInitVal(), isGlobal);
 //                pair = visitConstExp(varDef.getConstExpList().get(0));
             }
             return new Triple(name, pair);
         }
         else {
-            // TODO: 数组
-            return null;
+            name  = varDef.getIdent().getToken();
+            List<Pair> constExpList = new ArrayList<>();
+            for (ConstExp constExp : varDef.getConstExpList()) {
+                constExpList.add(visitConstExp(constExp, isGlobal));
+            }
+            if (varDef.getInitVal() == null) {
+                // 默认0
+                pair = getZeroPair(constExpList, type);
+            }
+            else{
+                pair = visitInitVal(varDef.getInitVal(), isGlobal);
+            }
+            return new Triple(name, pair);
         }
     }
 
-    public Pair visitInitVal(InitVal initVal) {
+    public Pair getZeroPair(List<Pair> constExpList, Type type) {
+        // 未初始化时根据声明信息获得对应结构的pair，内容显然是全0
+        // 获得子元素相关信息
+        if (constExpList.size() == 1) {
+            // 递归尽头
+            List<Integer> lenList = new ArrayList<>();
+            lenList.add(1);
+            lenList.add(Integer.parseInt(constExpList.get(0).getResult()));
+            Type oneType = new LineArrayType(type, (IntegerType) type, Integer.parseInt(constExpList.get(0).getResult()), 0, lenList);
+            List<Pair> onePairs = new ArrayList<>();
+            for (int i = 0; i < Integer.parseInt(constExpList.get(0).getResult()); i++) {
+                onePairs.add(new Pair(type, "0", null, true));
+            }
+            return new Pair(oneType, "zeroinitializer", onePairs, true);
+        }
+        List<Pair> lowConstExpList = new ArrayList<>(constExpList);
+        lowConstExpList.remove(0);
+        Pair lowPair = getZeroPair(lowConstExpList, type);
+        // 计算当前层级相关信息
+        List<Integer> curLenList = new ArrayList<>(((LineArrayType) lowPair.getType()).getLenList());
+        curLenList.add(Integer.parseInt(constExpList.get(0).getResult()));
+        Type curType = new LineArrayType(lowPair.getType(), (IntegerType) type, Integer.parseInt(constExpList.get(0).getResult()), lowPair.getDimension() + 1, curLenList);
+        List<Pair> curPairs = new ArrayList<>();
+        for (int i = 0; i < Integer.parseInt(constExpList.get(0).getResult()); i++) {
+            curPairs.add(lowPair);
+        }
+        return new Pair(curType, "zeroinitializer", curPairs, true);
+    }
+
+    public Pair visitInitVal(InitVal initVal, boolean isGlobal) {
         //  InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
         if (initVal.getLb() == null) {
-            return visitExp(initVal.getExp(), false);
+            return visitExp(initVal.getExp(), false, isGlobal);
         }
         else {
-            // TODO: 数组
-            return null;
+            if (initVal.getInitValList() == null || initVal.getInitValList().size() == 0) {
+                // "{""}",我也不知道为什么会有这种情况，大概是数组长度为0吧
+                List<Integer> lenList = new ArrayList<>();
+                lenList.add(0);
+                List<Pair> pairs = new ArrayList<>();
+                pairs.add(null);
+                return new Pair(new LineArrayType(IntegerType.i32, IntegerType.i32, 0, 1, lenList), null, pairs, true);
+            }
+            else {
+                // 正常数组
+                // [3 x i32] [i32 1, i32 2, i32 0], [3 x i32] zeroinitializer]
+                // type [consInitVal, con···]
+                // zeroinitializer 不需要括号环绕
+                List<Pair> pairList = new ArrayList<>();
+                for (InitVal curInitVal : initVal.getInitValList()) {
+                    pairList.add(visitInitVal(curInitVal, isGlobal));
+                }
+                Type lowType = pairList.get(0).getType(); // 类型肯定是一样的
+                Type type;
+                if (lowType instanceof IntegerType) {
+                    // 一维数组
+                    List<Integer> lenList = new ArrayList<>();
+                    lenList.add(1);
+                    lenList.add(initVal.getInitValList().size());
+                    type = new LineArrayType(lowType, (IntegerType) lowType, initVal.getInitValList().size(), 0, lenList);
+                }
+                else {
+                    // 高维数组
+                    List<Integer> lenList = new ArrayList<>(((LineArrayType) lowType).getLenList());
+                    lenList.add(initVal.getInitValList().size());
+                    type = new LineArrayType(lowType, ((LineArrayType) lowType).getBaseType(), initVal.getInitValList().size(), ((LineArrayType) lowType).getDimension() + 1, lenList);
+                }
+                String value = "";
+                boolean isZero;
+                if (isInitZero(initVal, isGlobal) && isGlobal) {
+                    value = "zeroinitializer";
+                    isZero = true;
+                }
+                else {
+                    StringBuilder sb_value = new StringBuilder();
+                    sb_value.append("[");
+                    sb_value.append(visitInitVal(initVal.getInitValList().get(0), isGlobal).getType().toString())
+                            .append(" ")
+                            .append(visitInitVal(initVal.getInitValList().get(0), isGlobal).getResult());
+                    for (int i = 1; i < initVal.getInitValList().size(); i++) {
+                        sb_value.append(", ")
+                                .append(visitInitVal(initVal.getInitValList().get(i), isGlobal).getType().toString())
+                                .append(" ")
+                                .append(visitInitVal(initVal.getInitValList().get(i), isGlobal).getResult());
+                    }
+                    sb_value.append("]");
+                    value = sb_value.toString();
+                    isZero = false;
+                }
+                return new Pair(type, value, pairList, isZero);
+            }
         }
     }
 
@@ -439,10 +646,10 @@ public class Llvm {
         Type type = visitBType(constDecl.getbType());
         // ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';'
         for (ConstDef constDef : constDecl.getConstDefs()) {
-            Triple triple = visitConstDef(constDef);
+            Triple triple = visitConstDef(constDef, isGlobal);
             // 更新type,不更新，强制转化
 //            type = bigger(type, triple.getPair().getType());
-            addIdentLine(triple.getName(), type, toType(type, triple.getPair()), true, isGlobal);
+            addIdentLine(triple.getName(), triple.getPair(), true, isGlobal);
             // 生成汇编码封装进addIdentLine
         }
     }
@@ -458,24 +665,23 @@ public class Llvm {
         }
     }
 
-    public Triple visitConstDef(ConstDef constDef) {
+    public Triple visitConstDef(ConstDef constDef, boolean isGlobal) {
         // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
         String name;
         Pair pair;
         if (constDef.getConstExps() == null || constDef.getConstExps().size() == 0) {
             name = constDef.getIdent().getToken();
-            pair = visitConstInitVal(constDef.getConstInitVal());
+            pair = visitConstInitVal(constDef.getConstInitVal(), isGlobal);
 //            pair = visitConstExp(constDef.getConstExps().get(0));
             return new Triple(name, pair);
         }
         else {
-            // TODO: 数组
             name = constDef.getIdent().getToken();
             List<Pair> constExpList = new ArrayList<>();
             for (ConstExp constExp : constDef.getConstExps()) {
-                constExpList.add(visitConstExp(constExp));
+                constExpList.add(visitConstExp(constExp, isGlobal));
             }
-            pair = visitConstInitVal(constDef.getConstInitVal());
+            pair = visitConstInitVal(constDef.getConstInitVal(), isGlobal);
             // 只需要返回Triple，在addLine中统一生成中间代码
             return new Triple(name, pair);
             // 分配内存空间，ConstInitVal计算值后在这里传值
@@ -484,13 +690,12 @@ public class Llvm {
         }
     }
 
-    public Pair visitConstInitVal(ConstInitVal constInitVal) {
+    public Pair visitConstInitVal(ConstInitVal constInitVal, boolean isGlobal) {
         // ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
         if (constInitVal.getLb() == null) {
-            return visitConstExp(constInitVal.getConstExp());
+            return visitConstExp(constInitVal.getConstExp(), isGlobal);
         }
         else {
-            // TODO: 数组
             if (constInitVal.getConstInitValList() == null || constInitVal.getConstInitValList().size() == 0) {
                 // "{""}",我也不知道为什么会有这种情况，大概是数组长度为0吧
                 List<Integer> lenList = new ArrayList<Integer>();
@@ -498,7 +703,7 @@ public class Llvm {
                 // 好奇怪，也没法调用
                 List<Pair> pairs = new ArrayList<>();
                 pairs.add(null);
-                return new Pair(new LineArrayType(IntegerType.i32, IntegerType.i32, 0, 1, lenList), null, pairs, false);
+                return new Pair(new LineArrayType(IntegerType.i32, IntegerType.i32, 0, 1, lenList), null, pairs, true);
             }
             else {
                 // 正常数组
@@ -507,21 +712,82 @@ public class Llvm {
                 // zeroinitializer 不需要括号环绕
                 List<Pair> pairList = new ArrayList<Pair>();
                 for (ConstInitVal curConstInitVal : constInitVal.getConstInitValList()) {
-                    pairList.add(visitConstInitVal(curConstInitVal));
+                    pairList.add(visitConstInitVal(curConstInitVal, isGlobal));
                 }
                 Type lowType = pairList.get(0).getType(); // 类型肯定是一样的
-                StringBuilder sb_value = new StringBuilder();
-                sb_value.append("[");
-
+                Type type;
+                if (lowType instanceof IntegerType) {
+                    // 一维数组
+                    List<Integer> lenList = new ArrayList<>();
+                    lenList.add(1);
+                    lenList.add(constInitVal.getConstInitValList().size());
+                    type = new LineArrayType(lowType, (IntegerType) lowType, constInitVal.getConstInitValList().size(), 0, lenList);
+                }
+                else {
+                    // 高维数组
+                    List<Integer> lenList = new ArrayList<>(((LineArrayType) lowType).getLenList());
+                    lenList.add(constInitVal.getConstInitValList().size());
+                    type = new LineArrayType(lowType, ((LineArrayType) lowType).getBaseType(), constInitVal.getConstInitValList().size(), ((LineArrayType) lowType).getDimension() + 1, lenList);
+                }
+                String value = "";
+                boolean isZero;
+                if (isInitZero(constInitVal, isGlobal) && isGlobal) {
+                    value = "zeroinitializer";
+                    isZero = true;
+                }
+                else {
+                    StringBuilder sb_value = new StringBuilder();
+                    sb_value.append("[");
+                    sb_value.append(visitConstInitVal(constInitVal.getConstInitValList().get(0), isGlobal).getType().toString())
+                            .append(" ")
+                            .append(visitConstInitVal(constInitVal.getConstInitValList().get(0), isGlobal).getResult());
+                    for (int i = 1; i < constInitVal.getConstInitValList().size(); i++) {
+                        sb_value.append(", ")
+                                .append(visitConstInitVal(constInitVal.getConstInitValList().get(i), isGlobal).getType().toString())
+                                .append(" ")
+                                .append(visitConstInitVal(constInitVal.getConstInitValList().get(i), isGlobal).getResult());
+                    }
+                    sb_value.append("]");
+                    value = sb_value.toString();
+                    isZero = false;
+                }
+                return new Pair(type, value, pairList, isZero);
             }
-            return null;
         }
     }
 
-    public Pair visitConstExp(ConstExp constExp) {
+    public boolean isInitZero(ConstInitVal constInitVal, boolean isGlobal) {
+        // ConstInitVal → ConstExp | '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        if (constInitVal.getLb() == null) {
+            // ConstExp
+            return visitConstExp(constInitVal.getConstExp(), isGlobal).getIsZero();
+        }
+        for (ConstInitVal aConstInitVal : constInitVal.getConstInitValList()) {
+            if (!isInitZero(aConstInitVal, isGlobal)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isInitZero(InitVal initVal, boolean isGlobal) {
+        //  InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
+        if (initVal.getLb() == null) {
+            // ConstExp
+            return visitExp(initVal.getExp(), false, isGlobal).getIsZero();
+        }
+        for (InitVal aInitVal : initVal.getInitValList()) {
+            if (!isInitZero(aInitVal, isGlobal)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public Pair visitConstExp(ConstExp constExp, boolean isConstValue) {
         //  ConstExp → AddExp
         // 包含在赋值语句中，可以直接返回单个值，因此false
-        return visitAddExp(constExp.getAddExp(), false);
+        return visitAddExp(constExp.getAddExp(), false, isConstValue);
     }
 
     public void visitFuncDef(FuncDef funcDef) {
@@ -570,7 +836,7 @@ public class Llvm {
     public LineFuncFParam visitFuncFParam(FuncFParam funcFParam) {
         //  FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }]
         if (funcFParam.getLb() == null || funcFParam.getLb().size() == 0) {
-            Type type = null;
+            Type type;
             String curBType = funcFParam.getbType().getIntToken().getToken();
             switch (curBType) {
                 case "int": {
@@ -584,13 +850,64 @@ public class Llvm {
             }
             String tNum = "%a" + baseBlockCounter;
             baseBlockCounter++;
-            Ident ident = new Ident(funcFParam.getIdent().getToken(), tNum, false, baseBlockCounter, type, tNum);
+            Ident ident = new Ident(funcFParam.getIdent().getToken(), tNum, false, blockCounter, type, tNum);
             return new LineFuncFParam(ident);
         }
         else {
-            // TODO: 数组
-            return null;
+            Type type;
+            String curBType = funcFParam.getbType().getIntToken().getToken();
+            switch (curBType) {
+                case "int": {
+                    type = IntegerType.i32;
+                    break;
+                }
+                default:{
+                    // default不要使用
+                    return null;
+                }
+            }
+            List<Integer> lens = new ArrayList<>();
+            lens.add(-1); // 表示第一维维度未知，是任意长
+            for (ConstExp aConstExp : funcFParam.getConstExpList()) {
+                lens.add(Integer.parseInt(visitConstExp(aConstExp, false).getResult()));
+            }
+            type = getArrayType(type, lens);
+            String tNum = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            Array array = new Array(funcFParam.getIdent().getToken(), tNum, false, type, blockCounter, tNum);
+            return new LineFuncFParam(array);
         }
+    }
+
+    // 计算type
+    public Type getArrayType(Type baseType, List<Integer> lens) {
+        /*
+        对二维数组而言，第一位长度可不写，即传递指针，那我觉得高位数组也只能不写第一维长度
+         */
+        // baseType: i32, lens: 2 3 4 => type [2 x [3 x [4 x i32]]]
+//        if (lens == null || lens.size() == 0) {
+//            // 参数本身是一维数组，特殊情况单独分析
+//            int curLen = Integer.parseInt(visitConstExp(lens.get(0)).getResult());
+//            return new LineArrayType(baseType, (IntegerType) baseType, curLen, 0, len);
+//        }
+
+        if (lens.size() == 1) {
+            // 一维数组，递归尽头
+            int curLen = lens.get(0);
+            List<Integer> len = new ArrayList<>();
+            len.add(curLen);
+            return new LineArrayType(baseType, (IntegerType) baseType, curLen, 0, len);
+        }
+
+        // 递归，为了未知维度的数组
+        List<Integer> lowLens = new ArrayList<>(lens);
+        lowLens.remove(0);
+
+        LineArrayType elementType = (LineArrayType) getArrayType(baseType, lowLens);
+        int curLen = lens.get(0);
+        List<Integer> len = elementType.getLenList();
+        len.add(curLen);
+        return new LineArrayType(elementType, (IntegerType) baseType, curLen, elementType.getDimension() + 1, len);
     }
 
     public void visitMainFuncDef(MainFuncDef mainFuncDef) {
@@ -622,11 +939,12 @@ public class Llvm {
                 for (LineFuncFParam lineFuncFParam : lineFuncFParams) {
                     LineIdent lineIdent = lineFuncFParam.getLineIdent();
                     if (lineIdent instanceof Ident) {
-                        addIdentLine(lineIdent.getName(), ((Ident) lineIdent).getLineIdentType(), ((Ident) lineIdent).getValue(), false, false);
+                        Pair pair = new Pair(((Ident) lineIdent).getLineIdentType(), ((Ident) lineIdent).getValue(), null, false);
+                        addIdentLine(lineIdent.getName(), pair, false, false);
                     }
                     else if (lineIdent instanceof Array) {
-                        // TODO: 数组
-                        return;
+                        Pair pair = new Pair(((Array) lineIdent).getLineIdentType(), ((Array) lineIdent).getValue(), null/*这里的pairs只有init时用得到，这里null也行*/, false);
+                        addIdentLine(lineIdent.getName(), pair, false, false);
                     }
                 }
             }
@@ -691,13 +1009,14 @@ public class Llvm {
         if (stmt.getType() == Stmt.StmtType.LValExp) {
             //LVal '=' Exp ';'
             //分析Exp，然后将值送给LVal
-            Pair pair = visitExp(stmt.getExp(), false);
+            Pair pair = visitExp(stmt.getExp(), false, false);
             Type type2 = pair.getType();
             String value = pair.getResult();
             // store i32 %2, i32* %1
             // 查表获得左值信息,数组最终也是一个个Ident
             // value为新值
-            Ident left = visitLVal(stmt.getLVal(), value, true);
+            // 左值不能是数组，直接转换Ident
+            Ident left = (Ident) visitLVal(stmt.getLVal(), value, true);
             // 返回的就是表中的本尊，不能是新建的，因为还要修改值
             // 生成中间代码
             StringBuilder sb = new StringBuilder("    ");
@@ -715,7 +1034,7 @@ public class Llvm {
         else if (stmt.getType() == Stmt.StmtType.Exp) {
             // [Exp] ';'
             if (stmt.getExp() != null) {
-                visitExp(stmt.getExp(), true);
+                visitExp(stmt.getExp(), true, false);
             }
         }
         else if (stmt.getType() == Stmt.StmtType.Block) {
@@ -830,7 +1149,7 @@ public class Llvm {
             // 'return' [Exp] ';'
 //            StringBuilder sb = new StringBuilder("ret");
             if (stmt.getExp() != null) {
-                Pair pair = visitExp(stmt.getExp(), false);
+                Pair pair = visitExp(stmt.getExp(), false, false);
 //                sb.append(" ").append(pair.getType().toString()).append(" ").append(pair.getResult());
 //                addLlvm("    " + sb.toString() + "\n");
                 return pair;
@@ -853,7 +1172,8 @@ public class Llvm {
                     .append(type.toString())
                     .append(" @getint()\n");
             addLlvm(sb_call.toString());
-            Ident ident = visitLVal(stmt.getLVal(), result, true);
+            // 又是左值不能是数组，直接转换Ident
+            Ident ident = (Ident) visitLVal(stmt.getLVal(), result, true);
             StringBuilder sb_store = new StringBuilder("    ");
             sb_store.append("store ")
                     .append(type.toString())
@@ -878,7 +1198,7 @@ public class Llvm {
                     if (str.charAt(++i) == 'd') {
                         // %d
                         // 打印ExpList.get(expCounter++)
-                        Pair pair = visitExp(stmt.getExpList().get(expCounter++), false);
+                        Pair pair = visitExp(stmt.getExpList().get(expCounter++), false, false);
                         // call void @putint(i32 %4)
                         StringBuilder sb = new StringBuilder("    ");
                         sb.append("call void @putint(")
@@ -992,7 +1312,7 @@ public class Llvm {
             List<Token> newOpList= new ArrayList<Token>(lAndExp.getOpList());
             newOpList.remove(0);
             LAndExp curLAndExp = new LAndExp(newEqList, newOpList);
-            visitLAndExp(curLAndExp, jumpTrue, jumpFalse);
+            visitLAndExp(curLAndExp, blockTrue, blockFalse);
         }
     }
 
@@ -1006,7 +1326,7 @@ public class Llvm {
         if (eqExp.getRelExpList().size() == 1) {
             // 单RelExp，没有多余的逻辑直接跳向最终结果
             jumpTrue = blockTrue;
-            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
+            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse, true);
 //            if (eqExp.getRelExpList().get(0).getAddExpList().size() == 1) {
 //                // 单add，rel中没有该判断程序
 //            }
@@ -1024,7 +1344,7 @@ public class Llvm {
                 jumpTrue = lessEqExpBlock;
             }
             // visit第一个RelExp，内部出现错误直接跳转，成功跳转到内部递归
-            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse);
+            visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse, false);
             // 取两个原子元素和一个OP判断，若失败直接跳转，成功则跳转到递归位置
             Pair onL = getLOfEq(eqExp);
             Pair onR = getROfEq(eqExp);
@@ -1089,33 +1409,35 @@ public class Llvm {
         return  getFirstOfRel(eqExp.getRelExpList().get(1));
     }
 
-    public void visitRelExp(RelExp relExp, String blockTrue, String blockFalse) {
+    public void visitRelExp(RelExp relExp, String blockTrue, String blockFalse, boolean isLonely) {
         // RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp
         // RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp }
         String jumpTrue;
         String jumpFalse = blockFalse;
         if (relExp.getAddExpList().size() == 1) {
-            // 单add，直接跳转
-            jumpTrue = blockTrue;
-            Pair singlePair = visitAddExp(relExp.getAddExpList().get(0), false);
-            String lResult = "%a" + baseBlockCounter;
-            baseBlockCounter++;
-            StringBuilder sb_icmp = new StringBuilder("    ")
-                    .append(lResult)
-                    // 不用eq1，因为所有非0整数都是真，但不都eq1
-                    .append(" = icmp ne i32 0, ")
-                    .append(singlePair.getResult())
-                    .append("\n");
-            addLlvm(sb_icmp.toString());
-            StringBuilder sb_br = new StringBuilder("    ")
-                    .append("br i1 ")
-                    .append(lResult)
-                    .append(", label %")
-                    .append(jumpTrue)
-                    .append(", label %")
-                    .append(jumpFalse)
-                    .append("\n");
-            addLlvm(sb_br.toString());
+            // 单add, 有可能什么都不用干
+            if (isLonely) {
+                jumpTrue = blockTrue;
+                Pair singlePair = visitAddExp(relExp.getAddExpList().get(0), false, false);
+                String lResult = "%a" + baseBlockCounter;
+                baseBlockCounter++;
+                StringBuilder sb_icmp = new StringBuilder("    ")
+                        .append(lResult)
+                        // 不用eq1，因为所有非0整数都是真，但不都eq1
+                        .append(" = icmp ne i32 0, ")
+                        .append(singlePair.getResult())
+                        .append("\n");
+                addLlvm(sb_icmp.toString());
+                StringBuilder sb_br = new StringBuilder("    ")
+                        .append("br i1 ")
+                        .append(lResult)
+                        .append(", label %")
+                        .append(jumpTrue)
+                        .append(", label %")
+                        .append(jumpFalse)
+                        .append("\n");
+                addLlvm(sb_br.toString());
+            }
         }
         else {
             // 多Add，取两个和一个op计算，遇到false直接返回0,true则跳转内部递归
@@ -1190,40 +1512,120 @@ public class Llvm {
                 List<Token> newOpList = new ArrayList<>(relExp.getOpList());
                 newOpList.remove(0);
                 RelExp newRelExp = new RelExp(newAddExpList, newOpList);
-                visitRelExp(newRelExp, jumpTrue, jumpFalse);
+                visitRelExp(newRelExp, jumpTrue, jumpFalse, isLonely);
             }
         }
     }
 
     public Pair getLOfRel(RelExp relExp) {
-        return visitAddExp(relExp.getAddExpList().get(0),false);
+        return visitAddExp(relExp.getAddExpList().get(0),false, false);
     }
 
     public Pair getROfRel(RelExp relExp) {
-        return visitAddExp(relExp.getAddExpList().get(1), false);
+        return visitAddExp(relExp.getAddExpList().get(1), false, false);
     }
 
     public Pair getLastOfRel(RelExp relExp) {
-        return visitAddExp(relExp.getAddExpList().get(relExp.getAddExpList().size() - 1), false);
+        return visitAddExp(relExp.getAddExpList().get(relExp.getAddExpList().size() - 1), false, false);
     }
 
     public Pair getFirstOfRel(RelExp relExp) {
-        return visitAddExp(relExp.getAddExpList().get(0), false);
+        return visitAddExp(relExp.getAddExpList().get(0), false, false);
     }
 
-    public Ident visitLVal(LVal lVal, String value, boolean update) {
+    public LineIdent visitLVal(LVal lVal, String value, boolean update) {
         // LVal → Ident {'[' Exp ']'}
-        if (lVal.getExpList() == null || lVal.getExpList().size() == 0) {
+        // 判断方法不能是Exp
+        LineIdent ident = findLVal(lVal.getIdent().getToken());
+        if (ident.getLineIdentType() instanceof IntegerType) {
             if (update) {
-                return findAndChangeLVal(lVal.getIdent().getToken(), value);
+                return findAndChangeLVal(lVal.getIdent().getToken(), value, null);
             }
             else {
                 return findLVal(lVal.getIdent().getToken());
             }
         }
         else {
-            // TODO: 数组
-            return null;
+            // 数组不会被修改
+            // c[2][3]
+            // %a0 [2 x [3 x 32] [[1, 2, 3], [4, 5, 6]]
+
+            // c[1][1]
+            // %a1 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]* %a0, i32 0, i32 1, i32 1
+            // 参数两维，type剥掉两层 type.getElementType().getElementType()
+
+            // c[1]
+            // %a2 = getelementptr [2 x [3 x i32]], [2 x [3 x i32]]* %a0, i32 0, i32 1
+            // 参数一维，剥掉一层type
+
+            // 两种思路
+            /*
+            1. 写成逐层剥掉
+            2. 一次访问，循环内只剥掉type
+            2.占用的资源较少
+             */
+            LineIdent curIdent = findLVal(lVal.getIdent().getToken());
+            String result = "%a" + baseBlockCounter;
+            baseBlockCounter++;
+            Type type = curIdent.getLineIdentType();
+            // 添加读值的中间代码
+            StringBuilder sb_load = new StringBuilder("    ");
+            if (((LineArrayType) type).getLen() == -1) {
+                // 函数形参，特殊处理（降一维
+                // 先将**读到*中
+                // %6 = load i32*, i32* * %3
+                String result_ptr = "%a" + baseBlockCounter;
+                baseBlockCounter++;
+                StringBuilder sb_load_ptr = new StringBuilder("    ");
+                sb_load_ptr.append(result_ptr)
+                        .append(" = load ")
+                        .append(type.toString())
+                        .append(", ")
+                        .append(type.toString())
+                        .append("* ")
+                        .append(curIdent.getTNum())
+                        .append("\n");
+                addLlvm(sb_load_ptr.toString());
+                sb_load.append(result)
+                        .append(" = getelementptr ")
+                        .append(((LineArrayType) type).getElementType())
+                        .append(", ")
+                        .append(((LineArrayType) type).getElementType())
+                        .append("* ")
+                        .append(result_ptr);
+            }
+            else{
+                sb_load.append(result)
+                        .append(" = getelementptr ")
+                        .append(type)
+                        .append(", ")
+                        .append(type)
+                        .append("* ")
+                        .append(curIdent.getTNum())
+                        // 赠送0，因为不在最高维度整体偏移
+                        .append(", i32 0");
+            }
+            for (Exp aExp : lVal.getExpList()) {
+                String curCoordinate = visitExp(aExp, false, false).getResult();
+                sb_load.append(", i32 ")
+                        .append(curCoordinate);
+            }
+            sb_load.append("\n");
+            addLlvm(sb_load.toString());
+            for (int i = 0; i < lVal.getExpList().size(); i++) {
+                type = ((LineArrayType) type).getElementType();
+            }
+            LineIdent finalLineIdent;
+            if (type instanceof IntegerType) {
+                // 读到普通变量为止
+                // 访问数组无法读到立即数，所以value设为寄存器
+                finalLineIdent = new Ident(curIdent.getName(), result, curIdent.getIsConst(), blockCounter, type, result);
+            }
+            else {
+                // 读到数组
+                finalLineIdent = new Array(curIdent.getName(), result, curIdent.getIsConst(), type, blockCounter, result);
+            }
+            return finalLineIdent;
         }
     }
 
@@ -1243,16 +1645,16 @@ public class Llvm {
         }
     }
 
-    public Pair visitExp(Exp exp, boolean isLonely) {
+    public Pair visitExp(Exp exp, boolean isLonely, boolean isConstValue) {
         //  Exp → AddExp
 //        if (isLonely) {
 //            return null;
 //        }
-        return visitAddExp(exp.getAddExp(), isLonely);
+        return visitAddExp(exp.getAddExp(), isLonely, isConstValue);
     }
 
     // 返回<类型，临时寄存器编号>
-    public Pair visitAddExp(AddExp addExp, boolean isLonely) {
+    public Pair visitAddExp(AddExp addExp, boolean isLonely, boolean isConstValue) {
         // AddExp → MulExp | AddExp ('+' | '−') MulExp
         // AddExp → MulExp{ ('+' | '−') MulExp }
         Type type; // 类型
@@ -1266,14 +1668,14 @@ public class Llvm {
         if (addExp.getOpList() == null || addExp.getOpList().size() == 0) {
             // 单MulExp，生成0+MulExp
             // mul的指令一定在add前，故先执行之占位寄存器编号
-            Pair mulPair = visitMulExp(addExp.getMulExpList().get(0), isLonely);
+            Pair mulPair = visitMulExp(addExp.getMulExpList().get(0), isLonely, isConstValue);
             type2 = mulPair.getType();
             on2 = mulPair.getResult();
             type = type2;
             if (!isLonely) {
                 // 被人调用，可以仅返回单独的立即数或寄存器，也就是不用生成算式
                 result = on2;
-                return new Pair(type, result, null, false);
+                return new Pair(type, result, null, result.equals("0"));
             }
             // 光杆Exp，因为add是最后一级必然需要生成一些东西来存结果，因而0+
 //            result = "%a" + getCurNode().getCurTCounter();
@@ -1284,7 +1686,7 @@ public class Llvm {
 //            op = "add";
 //            // 格式%2 = sub i32 0, %1
 //            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + "0" + ", " + on2 + "\n");
-            return new Pair(type, result, null, false);
+            return new Pair(type, result, null, result.equals("0"));
         }
         else {
             /*
@@ -1297,7 +1699,7 @@ public class Llvm {
             on2
             op
              */
-            Pair right = visitMulExp(addExp.getMulExpList().get(addExp.getMulExpList().size() - 1), isLonely);
+            Pair right = visitMulExp(addExp.getMulExpList().get(addExp.getMulExpList().size() - 1), isLonely, isConstValue);
             type2 = right.getType();
             on2 = right.getResult();
             // 将Mul op （）括号内的东西看做新的AddExp，相当于临时改成右递归文法
@@ -1306,7 +1708,7 @@ public class Llvm {
             newMulList.remove(newMulList.size() - 1);
             ArrayList<Token> newOpList = new ArrayList<>(addExp.getOpList());
             newOpList.remove(newOpList.size() - 1);
-            Pair left = visitAddExp(new AddExp(newMulList, newOpList), isLonely);
+            Pair left = visitAddExp(new AddExp(newMulList, newOpList), isLonely, isConstValue);
             type1 = left.getType();
             on1 = left.getResult();
             // 类型转换
@@ -1320,7 +1722,7 @@ public class Llvm {
                     result = String.valueOf(op.equals("add") ? (one + two) : (one - two));
                     if (!isLonely) {
                         // 有人调用，可以直接返回单个值
-                        return new Pair(type, result, null, false);
+                        return new Pair(type, result, null, result.equals("0"));
                     }
                 }
                 else {
@@ -1338,7 +1740,7 @@ public class Llvm {
         }
     }
 
-    public Pair visitMulExp(MulExp mulExp, boolean isLonely) {
+    public Pair visitMulExp(MulExp mulExp, boolean isLonely, boolean isConstValue) {
         // MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
         // MulExp → UnaryExp { ('*' | '/' | '%') UnaryExp }
         Type type; // 类型
@@ -1352,7 +1754,7 @@ public class Llvm {
         if (mulExp.getOpList() == null || mulExp.getOpList().size() == 0) {
             // 单UnaryExp，生成1*UnaryExp
             // unary的指令一定在mul前，故先执行之占位寄存器编号
-            Pair unaryPair = visitUnaryExp(mulExp.getUnaryExpList().get(0), isLonely);
+            Pair unaryPair = visitUnaryExp(mulExp.getUnaryExpList().get(0), isLonely, isConstValue);
             type2 = unaryPair.getType();
             on2 = unaryPair.getResult();
             type = type2;
@@ -1364,7 +1766,7 @@ public class Llvm {
 //            op = "mul";
             // 格式%2 = sub i32 0, %1
 //            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + "1" + ", " + on2 + "\n");
-            return new Pair(type, result, null, false);
+            return new Pair(type, result, null, result.equals("0"));
         }
         else {
             /*
@@ -1377,7 +1779,7 @@ public class Llvm {
             on2
             op
              */
-            Pair right = visitUnaryExp(mulExp.getUnaryExpList().get(mulExp.getUnaryExpList().size() - 1), isLonely);
+            Pair right = visitUnaryExp(mulExp.getUnaryExpList().get(mulExp.getUnaryExpList().size() - 1), isLonely, isConstValue);
             type2 = right.getType();
             on2 = right.getResult();
             // 将Unary op （）括号内的东西看做新的MulExp，相当于临时改成右递归文法
@@ -1386,7 +1788,7 @@ public class Llvm {
             newUnaryList.remove(newUnaryList.size() - 1);
             ArrayList<Token> newOpList = new ArrayList<>(mulExp.getOpList());
             newOpList.remove(newOpList.size() - 1);
-            Pair left = visitMulExp(new MulExp(newUnaryList, newOpList), isLonely);
+            Pair left = visitMulExp(new MulExp(newUnaryList, newOpList), isLonely, isConstValue);
             type1 = left.getType();
             on1 = left.getResult();
             // 类型转换
@@ -1423,7 +1825,7 @@ public class Llvm {
                         default:// "srem":
                             return null;
                     }
-                    return new Pair(type, result, null, false);
+                    return new Pair(type, result, null, result.equals("0"));
                 }
                 else {
                     // 其他类型，暂时还用不到
@@ -1436,33 +1838,33 @@ public class Llvm {
             baseBlockCounter++;
             // 格式%2 = sub i32 0, %1
             addLlvm("    " + result + " = " + op + " " + type.toString() + " " + on1 + ", " + on2 + "\n");
-            return new Pair(type, result, null, false);
+            return new Pair(type, result, null, result.equals("0"));
         }
     }
 
-    public Pair visitUnaryExp(UnaryExp unaryExp, boolean isLonely) {
+    public Pair visitUnaryExp(UnaryExp unaryExp, boolean isLonely, boolean isConstValue) {
         //  UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' | UnaryOp UnaryExp
         Type type;
         String on;
         String result;
         if (unaryExp.getPrimaryExp() != null) {
-            return visitPrimaryExp(unaryExp.getPrimaryExp(), isLonely);
+            return visitPrimaryExp(unaryExp.getPrimaryExp(), isLonely, isConstValue);
         }
         else if (unaryExp.getUnaryExp() != null) {
             // UnaryOp UnaryExp
             if (unaryExp.getUnaryOp().getOpToken().getToken().equals("+")) {
                 // do nothing
-                return visitUnaryExp(unaryExp.getUnaryExp(), isLonely);
+                return visitUnaryExp(unaryExp.getUnaryExp(), isLonely, isConstValue);
             }
             else if (unaryExp.getUnaryOp().getOpToken().getToken().equals("-")) {
                 // -1 * UnaryExp
-                Pair pair = visitUnaryExp(unaryExp.getUnaryExp(), isLonely);
+                Pair pair = visitUnaryExp(unaryExp.getUnaryExp(), isLonely, isConstValue);
                 type = pair.getType();
                 on = pair.getResult();
                 if (on.charAt(0) != '%') {
                     // 又是常量运算，直接算出结果
                     result = String.valueOf(Integer.parseInt(on) * -1);
-                    return new Pair(type, result, null, false);
+                    return new Pair(type, result, null, result.equals("0"));
                 }
 //            result = "%a" + getCurNode().getCurTCounter();
 //            getCurNode().addCurTCounter();
@@ -1474,14 +1876,14 @@ public class Llvm {
             else if (unaryExp.getUnaryOp().getOpToken().getToken().equals("!")){
                 // ! 条件表达式 是0得1否则得0
                 // icmp eq i32 0, UnaryExp
-                Pair pair = visitUnaryExp(unaryExp.getUnaryExp(), false);
+                Pair pair = visitUnaryExp(unaryExp.getUnaryExp(), false, isConstValue);
                 if (pair.getResult().charAt(0) != '@' && pair.getResult().charAt(0) != '%') {
                     // 常量，直接判断
                     if (pair.getResult().equals("0")) {
                         return new Pair(IntegerType.i32, "1", null, false);
                     }
                     else {
-                        return new Pair(IntegerType.i32, "0", null, false);
+                        return new Pair(IntegerType.i32, "0", null, true);
                     }
                 }
                 else {
@@ -1530,19 +1932,19 @@ public class Llvm {
                     .append(lineFunc.getName())
                     .append("(");
             if (funcRParams.size() != 0) {
-                sb.append(funcRParams.get(0).getType())
+                sb.append(funcRParams.get(0).getTypeForCall())
                         .append(" ")
                         .append(funcRParams.get(0).getResult());
             }
             for (int i = 1; i < funcRParams.size(); i++) {
                 sb.append(", ")
-                        .append(funcRParams.get(i).getType())
+                        .append(funcRParams.get(i).getTypeForCall())
                         .append(" ")
                         .append(funcRParams.get(i).getResult());
             }
             sb.append(")\n");
             addLlvm(sb.toString());
-            return new Pair(type, result, null, false);
+            return new Pair(type, result, null, result.equals("0"));
         }
     }
 
@@ -1550,51 +1952,67 @@ public class Llvm {
         // FuncRParams → Exp { ',' Exp }
         ArrayList<Pair> fRParams = new ArrayList<>();
         for (Exp exp : funcRParams.getExpList()) {
-            fRParams.add(visitExp(exp, false));
+            fRParams.add(visitExp(exp, false, false));
         }
         return fRParams;
     }
 
-    public Pair visitPrimaryExp(PrimaryExp primaryExp, boolean isLonely) {
+    public Pair visitPrimaryExp(PrimaryExp primaryExp, boolean isLonely, boolean isConstValue) {
         //  PrimaryExp → '(' Exp ')' | LVal | Number
         if (primaryExp.getExp() != null) {
-            return visitExp(primaryExp.getExp(), isLonely);
+            return visitExp(primaryExp.getExp(), isLonely, false);
         }
         else if (primaryExp.getLVal() != null) {
             // 不改变值所以value用不到给null就行
-            Ident ident = visitLVal(primaryExp.getLVal(), null, false);
+            // 可能是数组
+            LineIdent ident = visitLVal(primaryExp.getLVal(), null, false);
             String result;
             Type type = ident.getLineIdentType();
-//            if (ident.getValue().charAt(0) != '@' && ident.getValue().charAt(0) != '%') {
-//                // 具有确定的值，直接使用 ，如果影响分配寄存器就删掉这个分支
-//                result = ident.getValue();
-//            }
-//            else {
-            // 封装load
-            // 分配寄存器
-//            result = "%a" + getCurNode().getCurTCounter();
-//            getCurNode().addCurTCounter();
-            result = "%a" + baseBlockCounter;
-            baseBlockCounter++;
-            // 生成中间代码
-            //%2 = load i32, i32* @b
-            StringBuilder sb = new StringBuilder("    ");
-            sb.append(result)
-                    .append(" = load ")
-                    .append(type.toString())
-                    .append(", ")
-                    .append(type.toString())
-                    .append("* ")
-                    .append(ident.getTNum())
-                    .append("\n");
-            addLlvm(sb.toString());
-//            }
+            if ((ident.getIsConst() || isConstValue) && Character.isDigit(ident.getValue().charAt(0))) {
+                // 具有确定的值，直接使用 ，如果影响分配寄存器就删掉这个分支
+                result = ident.getValue();
+            }
+            else {
+                // 封装load
+                // 分配寄存器
+    //            result = "%a" + getCurNode().getCurTCounter();
+    //            getCurNode().addCurTCounter();
+                result = "%a" + baseBlockCounter;
+                baseBlockCounter++;
+                // 生成中间代码
+                //%2 = load i32, i32* @b
+                StringBuilder sb = new StringBuilder("    ");
+                if (type instanceof IntegerType) {
+                    sb.append(result)
+                            .append(" = load ")
+                            .append(type.toString())
+                            .append(", ")
+                            .append(type.toString())
+                            .append("* ")
+                            .append(ident.getTNum())
+                            .append("\n");
+                }
+                else if (type instanceof LineArrayType) {
+                    // %13 = getelementptr [6 x i32], [6 x i32]* @a, i32 0, i32 0
+                    // 剥下一维，从数组中找到入口地址（首位地址
+                    sb.append(result)
+                            .append(" = getelementptr")
+                            .append(type.toString())
+                            .append(", ")
+                            .append(type.toString())
+                            .append("* ")
+                            .append(ident.getTNum())
+                            .append(", i32 0, i32 0") // 不需要位移，两个i32即可
+                            .append("\n");
+                }
+                addLlvm(sb.toString());
+            }
             return new Pair(type, result, null, false);
         }
         else {
             Type type = IntegerType.i32;
             String result = primaryExp.getNumber().getIntConstToken().getToken();
-            return new Pair(type, result, null, false);
+            return new Pair(type, result, null, result.equals("0"));
         }
     }
 }
