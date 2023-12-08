@@ -1968,7 +1968,7 @@ public class Llvm {
             LineIdent ident = visitLVal(primaryExp.getLVal(), null, false);
             String result;
             Type type = ident.getLineIdentType();
-            if ((ident.getIsConst() || isConstValue) && Character.isDigit(ident.getValue().charAt(0))) {
+            if ((ident.getIsConst() || isConstValue) && ident.getValue().charAt(0) != '@' && ident.getValue().charAt(0) != '%' && ident.getValue().charAt(0) != '[' && ident.getValue().charAt(0) != 'i') {
                 // 具有确定的值，直接使用 ，如果影响分配寄存器就删掉这个分支
                 result = ident.getValue();
             }

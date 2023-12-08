@@ -3,180 +3,166 @@ declare void @putint(i32)
 declare void @putch(i32)
 declare void @putstr(i8*)
 
-@a = dso_local global [510 x i32] zeroinitializer
-@prime = dso_local global [510 x i32] zeroinitializer
-@reflect1 = dso_local constant [16 x i32] [i32 -711942876, i32 -1060809599, i32 1758839997, i32 423174272, i32 1412407466, i32 375872692, i32 1543568839, i32 915987033, i32 698198080, i32 -2143283456, i32 2059223660, i32 -34179219, i32 378910912, i32 1498631475, i32 -1853883889, i32 1640319187]
-@reflect2 = dso_local constant [5 x [5 x i32]] [[5 x i32] [i32 -1152785601, i32 1891446969, i32 938484211, i32 -1596516698, i32 1681072330], [5 x i32] [i32 128222498, i32 1090169129, i32 -347746822, i32 -326257601, i32 -1366930863], [5 x i32] [i32 -823961496, i32 2103453081, i32 -402114823, i32 2139806715, i32 -732814375], [5 x i32] [i32 1302967469, i32 1623817872, i32 898372270, i32 -812618050, i32 -1403178881], [5 x i32] [i32 -1776328495, i32 958769364, i32 47496017, i32 -1384738865, i32 1751940200]]
+@_1 = dso_local constant i32 4
+@aaa = dso_local constant [2 x i32] [i32 10086, i32 16]
 
-define dso_local i32 @main() {
-    %a1 = alloca i32
-    store i32 2, i32* %a1
-    %a2 = alloca i32
-    store i32 0, i32* %a2
-    %a3 = call i32 @getint()
-    store i32 %a3, i32* %a2
-    br label %a4
-a4:
-    %a8 = load i32, i32* %a1
-    %a9 = load i32, i32* %a2
-    %a10 = icmp ult i32 %a8, %a9
-    br i1 %a10, label %a5, label %a7
+define dso_local i32 @_add_fake(i32 %a0, i32 %a1) {
+    %a3 = alloca i32
+    store i32 %a0, i32* %a3
+    %a4 = alloca i32
+    store i32 %a1, i32* %a4
+    br label %a5
 a5:
-    %a12 = load i32, i32* %a1
-    %a11 = getelementptr [510 x i32], [510 x i32]* @a, i32 0, i32 %a12
-    store i32 1, i32* %a11
-    %a13 = load i32, i32* %a1
-    %a14 = add i32 %a13, 1
-    store i32 %a14, i32* %a1
-    br label %a6
+    %a9 = load i32, i32* %a4
+    %a10 = load i32, i32* %a3
+    %a11 = add i32 %a10, %a9
+    %a12 = icmp uge i32 %a11, 10186
+    br i1 %a12, label %a6, label %a7
 a6:
-    br label %a4
+    %a13 = load i32, i32* %a4
+    %a14 = mul i32 203, %a13
+    %a15 = sdiv i32 %a14, 201
+    %a16 = load i32, i32* %a3
+    %a17 = add i32 %a16, %a15
+    br label %a8
 a7:
-    store i32 2, i32* %a1
-    %a15 = alloca i32
-    store i32 0, i32* %a15
-    br label %a16
-a16:
-    %a20 = load i32, i32* %a1
-    %a21 = load i32, i32* %a2
-    %a22 = icmp ult i32 %a20, %a21
-    br i1 %a22, label %a17, label %a19
-a17:
-    br label %a23
-a23:
-    %a27 = load i32, i32* %a1
-    %a26 = getelementptr [510 x i32], [510 x i32]* @a, i32 0, i32 %a27
-    %a28 = load i32, i32* %a26
-    %a29 = icmp ne i32 0, %a28
-    br i1 %a29, label %a24, label %a25
-a24:
-    %a30 = load i32, i32* %a1
-    %a32 = load i32, i32* %a15
-    %a31 = getelementptr [510 x i32], [510 x i32]* @prime, i32 0, i32 %a32
-    store i32 %a30, i32* %a31
-    %a33 = load i32, i32* %a15
-    %a34 = add i32 %a33, 1
-    store i32 %a34, i32* %a15
-    br label %a25
-a25:
-    %a35 = alloca i32
-    store i32 0, i32* %a35
-    br label %a36
-a36:
-    %a41 = load i32, i32* %a35
-    %a42 = load i32, i32* %a15
-    %a43 = icmp ult i32 %a41, %a42
-    br i1 %a43, label %a40, label %a39
-a40:
-    %a45 = load i32, i32* %a35
-    %a44 = getelementptr [510 x i32], [510 x i32]* @prime, i32 0, i32 %a45
-    %a46 = load i32, i32* %a44
-    %a47 = load i32, i32* %a1
-    %a48 = mul i32 %a47, %a46
-    %a49 = load i32, i32* %a2
-    %a50 = icmp ule i32 %a48, %a49
-    br i1 %a50, label %a37, label %a39
-a37:
-    %a53 = load i32, i32* %a35
-    %a52 = getelementptr [510 x i32], [510 x i32]* @prime, i32 0, i32 %a53
-    %a54 = load i32, i32* %a52
-    %a55 = load i32, i32* %a1
-    %a56 = mul i32 %a55, %a54
-    %a51 = getelementptr [510 x i32], [510 x i32]* @a, i32 0, i32 %a56
-    store i32 0, i32* %a51
-    br label %a57
-a57:
-    %a61 = load i32, i32* %a35
-    %a60 = getelementptr [510 x i32], [510 x i32]* @prime, i32 0, i32 %a61
-    %a62 = load i32, i32* %a60
-    %a63 = load i32, i32* %a1
-    %a64 = srem i32 %a63, %a62
-    %a65 = icmp eq i32 %a64, 0
-    br i1 %a65, label %a58, label %a59
-a58:
-    br label %a39
-    br label %a59
-a59:
-    %a66 = load i32, i32* %a35
-    %a67 = add i32 %a66, 1
-    store i32 %a67, i32* %a35
-    br label %a38
-a38:
-    br label %a36
-a39:
-    %a68 = load i32, i32* %a1
-    %a69 = add i32 %a68, 1
-    store i32 %a69, i32* %a1
     br label %a18
 a18:
-    br label %a16
+    %a22 = load i32, i32* %a4
+    %a23 = load i32, i32* %a3
+    %a24 = add i32 %a23, %a22
+    %a25 = sub i32 %a24, 10086
+    %a26 = icmp ult i32 %a25, 12345678
+    br i1 %a26, label %a19, label %a20
 a19:
-    store i32 0, i32* %a1
-    br label %a70
-a70:
-    %a74 = icmp ne i32 0, 114514
-    br i1 %a74, label %a71, label %a73
-a71:
-    br label %a75
-a75:
-    %a79 = load i32, i32* %a1
-    %a78 = getelementptr [510 x i32], [510 x i32]* @a, i32 0, i32 %a79
-    %a80 = load i32, i32* %a78
-    %a81 = icmp ne i32 0, %a80
-    br i1 %a81, label %a76, label %a77
-a76:
-    %a82 = load i32, i32* %a1
-    call void @putint(i32 %a82)
-    call void @putch(i32 32)
-    %a84 = load i32, i32* %a1
-    %a85 = srem i32 %a84, 5
-    %a86 = load i32, i32* %a1
-    %a87 = srem i32 %a86, 5
-    %a83 = getelementptr [5 x [5 x i32]], [5 x [5 x i32]]* @reflect2, i32 0, i32 %a85, i32 %a87
-    %a88 = load i32, i32* %a83
-    %a89 = load i32, i32* %a1
-    %a90 = add i32 %a89, 1
-    %a91 = srem i32 %a90, 2
-    %a92 = mul i32 %a91, %a88
-    %a94 = load i32, i32* %a1
-    %a95 = srem i32 %a94, 16
-    %a93 = getelementptr [16 x i32], [16 x i32]* @reflect1, i32 0, i32 %a95
-    %a96 = load i32, i32* %a93
-    %a97 = load i32, i32* %a1
-    %a98 = srem i32 %a97, 2
-    %a99 = mul i32 %a98, %a96
-    %a100 = add i32 %a99, %a92
-    call void @putint(i32 %a100)
+    %a27 = load i32, i32* %a4
+    %a28 = mul i32 2022, %a27
+    %a29 = sdiv i32 %a28, 2019
+    %a30 = load i32, i32* %a3
+    %a31 = mul i32 1003, %a30
+    %a32 = sdiv i32 %a31, 1009
+    %a33 = add i32 %a32, %a29
+    br label %a21
+a20:
+    %a34 = load i32, i32* %a4
+    %a35 = load i32, i32* %a3
+    %a36 = add i32 %a35, %a34
+    %a37 = sub i32 %a36, 233
+    br label %a21
+a21:
+    br label %a8
+a8:
+    ret i32 -10086
+}
+
+define dso_local i32 @_get_id() {
+    %a39 = alloca i32
+    store i32 0, i32* %a39
+    store i32 76, i32* %a39
+    %a40 = load i32, i32* %a39
+    call void @putint(i32 %a40)
     call void @putch(i32 10)
-    br label %a77
-a77:
-    %a101 = load i32, i32* %a1
-    %a102 = add i32 %a101, 1
-    store i32 %a102, i32* %a1
-    br label %a103
-a103:
-    %a107 = load i32, i32* %a1
-    %a108 = load i32, i32* %a2
-    %a109 = icmp ult i32 %a107, %a108
-    br i1 %a109, label %a104, label %a105
-a104:
-    br label %a72
-    br label %a106
-a105:
-    br label %a73
-    br label %a106
-a106:
-    br label %a72
-    br label %a73
-    br label %a72
-    br label %a73
-    br label %a72
-    br label %a73
-    br label %a72
-    br label %a73
+    store i32 10086, i32* %a39
+    %a41 = load i32, i32* %a39
+    call void @putint(i32 %a41)
+    call void @putch(i32 10)
+    %a42 = alloca i32
+    store i32 -10, i32* %a42
+    %a43 = load i32, i32* %a42
+    call void @putint(i32 %a43)
+    call void @putch(i32 10)
+    ret i32 20373381
+}
+
+define dso_local i32 @main() {
+    %a45 = alloca i32
+    store i32 0, i32* %a45
+    %a46 = call i32 @getint()
+    store i32 %a46, i32* %a45
+    %a47 = alloca i32
+    store i32 0, i32* %a47
+    %a48 = alloca i32
+    store i32 0, i32* %a48
+    br label %a49
+a49:
+    %a53 = icmp ne i32 0, 1
+    br i1 %a53, label %a50, label %a52
+a50:
+    %a55 = load i32, i32* %a47
+    %a54 = getelementptr [2 x i32], [2 x i32]* @aaa, i32 0, i32 %a55
+    %a56 = load i32, i32* %a54
+    %a57 = load i32, i32* %a48
+    %a58 = add i32 %a57, %a56
+    store i32 %a58, i32* %a48
+    %a59 = load i32, i32* %a47
+    %a60 = add i32 %a59, 1
+    store i32 %a60, i32* %a47
+    br label %a61
+a61:
+    %a64 = load i32, i32* %a47
+    %a65 = icmp uge i32 %a64, 2
+    br i1 %a65, label %a62, label %a63
+a62:
+    br label %a52
+    br label %a63
+a63:
+    br label %a51
+a51:
+    br label %a49
+a52:
+    %a66 = alloca i32
+    store i32 0, i32* %a66
+    br label %a67
+a67:
+    %a71 = icmp ule i32 1, 2
+    br i1 %a71, label %a68, label %a70
+a68:
     br label %a72
 a72:
-    br label %a70
+    %a75 = load i32, i32* %a66
+    %a76 = icmp eq i32 %a75, 5
+    br i1 %a76, label %a73, label %a74
 a73:
+    %a77 = load i32, i32* %a66
+    %a78 = add i32 %a77, 1
+    store i32 %a78, i32* %a66
+    br label %a69
+    br label %a74
+a74:
+    br label %a79
+a79:
+    %a82 = load i32, i32* %a66
+    %a83 = icmp ugt i32 %a82, 10
+    br i1 %a83, label %a80, label %a81
+a80:
+    br label %a70
+    br label %a81
+a81:
+    %a84 = load i32, i32* %a66
+    %a85 = add i32 %a84, 1
+    store i32 %a85, i32* %a66
+    %a86 = load i32, i32* %a66
+    %a87 = load i32, i32* %a66
+    %a88 = mul i32 %a87, %a86
+    %a89 = load i32, i32* %a48
+    %a90 = add i32 %a89, %a88
+    store i32 %a90, i32* %a48
+    br label %a69
+a69:
+    br label %a67
+a70:
+    %a91 = load i32, i32* %a48
+    call void @putint(i32 %a91)
+    call void @putch(i32 10)
+    %a92 = load i32, i32* %a45
+    %a93 = call i32 @_add_fake(i32 123243, i32 %a92)
+    %a94 = call i32 @_get_id()
+    %a95 = load i32, i32* %a48
+    %a96 = add i32 %a95, %a94
+    %a97 = add i32 %a96, %a93
+    store i32 %a97, i32* %a48
+    %a98 = load i32, i32* %a48
+    call void @putint(i32 %a98)
+    call void @putch(i32 10)
     ret i32 0
 }
