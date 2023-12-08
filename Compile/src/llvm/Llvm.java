@@ -7,6 +7,7 @@ import Type.IntegerType;
 import Type.LineArrayType;
 import Type.Type;
 import Type.FuncVoidType;
+import Type.TypeReturn;
 import llvm.Container.Pair;
 import llvm.Container.Triple;
 import llvm.TreeTable.Line.*;
@@ -954,27 +955,14 @@ public class Llvm {
             // Block → '{' { BlockItem } '}'
 //            addLlvm("{\n");
 //            addLlvm("block" + baseBlockCounter++ + ":\n");
-            Pair pair = null;
+            Boolean hasReturn = false;
             for (BlockItem bi : block.getBlockItemList()) {
-                pair = visitBlockItem(bi, blockBreak, blockContinue);
+                Pair checkReturn = visitBlockItem(bi, blockBreak, blockContinue);
+                if (checkReturn != null && checkReturn.getType() instanceof TypeReturn)
+                    hasReturn = true;
             }
-            if (funcCall) {
-                StringBuilder sb = new StringBuilder("    ret ");
-                if (pair != null) {
-                    if (pair.getType().equals(FuncVoidType.typeVoid)){
-                        sb.append("void\n");
-                    }
-                    else if (pair.getType().equals(IntegerType.i32)) {
-                        sb.append(pair.getType().toString())
-                                .append(" ")
-                                .append(pair.getResult())
-                                .append("\n");
-                    }
-                }
-                else {
-                    sb.append("void\n");
-                }
-                addLlvm(sb.toString());
+            if (funcCall && !hasReturn) {
+                addLlvm("    ret void");
             }
 //            addLlvm("}\n");
 //            addLlvm("\n");
@@ -1152,9 +1140,12 @@ public class Llvm {
                 Pair pair = visitExp(stmt.getExp(), false, false);
 //                sb.append(" ").append(pair.getType().toString()).append(" ").append(pair.getResult());
 //                addLlvm("    " + sb.toString() + "\n");
-                return pair;
+                addLlvm("    ret " + pair.getType().toString() + " " + pair.getResult() + "\n");
+                return new Pair(TypeReturn.ret, "ReturnTk", null, false);
             }
-            return new Pair(FuncVoidType.typeVoid, "void", null, false);
+            addLlvm("    ret void\n");
+            return new Pair(TypeReturn.ret, "ReturnTk", null, false);
+            // Return的返回值不重要，只需要能识别出来时return的返回值，因此采用tpye = TypeReturn.ret
         }
         else if (stmt.getType() == Stmt.StmtType.LValGetint) {
             // LVal '=' 'getint''('')'';'
@@ -1458,19 +1449,19 @@ public class Llvm {
             String op;
             switch (relExp.getOpList().get(0).getToken()) {
                 case "<": {
-                    op = "ult";
+                    op = "slt";
                     break;
                 }
                 case "<=": {
-                    op = "ule";
+                    op = "sle";
                     break;
                 }
                 case ">": {
-                    op = "ugt";
+                    op = "sgt";
                     break;
                 }
                 case ">=": {
-                    op = "uge";
+                    op = "sge";
                     break;
                 }
                 default: {
@@ -1542,7 +1533,7 @@ public class Llvm {
                 return findAndChangeLVal(lVal.getIdent().getToken(), value, null);
             }
             else {
-                return findLVal(lVal.getIdent().getToken());
+                return ident;
             }
         }
         else {
@@ -1564,10 +1555,9 @@ public class Llvm {
             2. 一次访问，循环内只剥掉type
             2.占用的资源较少
              */
-            LineIdent curIdent = findLVal(lVal.getIdent().getToken());
             String result = "%a" + baseBlockCounter;
             baseBlockCounter++;
-            Type type = curIdent.getLineIdentType();
+            Type type = ident.getLineIdentType();
             // 添加读值的中间代码
             StringBuilder sb_load = new StringBuilder("    ");
             if (((LineArrayType) type).getLen() == -1) {
@@ -1583,7 +1573,7 @@ public class Llvm {
                         .append(", ")
                         .append(type.toString())
                         .append("* ")
-                        .append(curIdent.getTNum())
+                        .append(ident.getTNum())
                         .append("\n");
                 addLlvm(sb_load_ptr.toString());
                 sb_load.append(result)
@@ -1601,7 +1591,7 @@ public class Llvm {
                         .append(", ")
                         .append(type)
                         .append("* ")
-                        .append(curIdent.getTNum())
+                        .append(ident.getTNum())
                         // 赠送0，因为不在最高维度整体偏移
                         .append(", i32 0");
             }
@@ -1619,11 +1609,11 @@ public class Llvm {
             if (type instanceof IntegerType) {
                 // 读到普通变量为止
                 // 访问数组无法读到立即数，所以value设为寄存器
-                finalLineIdent = new Ident(curIdent.getName(), result, curIdent.getIsConst(), blockCounter, type, result);
+                finalLineIdent = new Ident(ident.getName(), result, ident.getIsConst(), blockCounter, type, result);
             }
             else {
                 // 读到数组
-                finalLineIdent = new Array(curIdent.getName(), result, curIdent.getIsConst(), type, blockCounter, result);
+                finalLineIdent = new Array(ident.getName(), result, ident.getIsConst(), type, blockCounter, result);
             }
             return finalLineIdent;
         }
@@ -1887,12 +1877,17 @@ public class Llvm {
                     }
                 }
                 else {
+                    // 生成全1掩码
+//                    addLlvm("    %mask = " + pair.getType().toString() + " -1\n");
                     result = "%a" + baseBlockCounter;
                     baseBlockCounter++;
                     StringBuilder sb_icmp = new StringBuilder("    ")
                             .append(result)
-                            .append(" = icmp eq i32 0, ")
+                            .append(" = xor ")
+                            .append(pair.getType().toString())
+                            .append(" ")
                             .append(pair.getResult())
+                            .append(", -1")
                             .append("\n");
                     addLlvm(sb_icmp.toString());
                     return new Pair(IntegerType.i32, result, null, false);
@@ -1966,7 +1961,7 @@ public class Llvm {
             // 不改变值所以value用不到给null就行
             // 可能是数组
             LineIdent ident = visitLVal(primaryExp.getLVal(), null, false);
-            String result;
+            String result = "";
             Type type = ident.getLineIdentType();
             if ((ident.getIsConst() || isConstValue) && ident.getValue().charAt(0) != '@' && ident.getValue().charAt(0) != '%' && ident.getValue().charAt(0) != '[' && ident.getValue().charAt(0) != 'i') {
                 // 具有确定的值，直接使用 ，如果影响分配寄存器就删掉这个分支
@@ -1974,16 +1969,14 @@ public class Llvm {
             }
             else {
                 // 封装load
-                // 分配寄存器
-    //            result = "%a" + getCurNode().getCurTCounter();
-    //            getCurNode().addCurTCounter();
-                result = "%a" + baseBlockCounter;
-                baseBlockCounter++;
                 // 生成中间代码
                 //%2 = load i32, i32* @b
-                StringBuilder sb = new StringBuilder("    ");
+                StringBuilder sb = new StringBuilder("");
                 if (type instanceof IntegerType) {
-                    sb.append(result)
+                    // 分配寄存器
+                    result = "%a" + baseBlockCounter;
+                    baseBlockCounter++;
+                    sb.append("    " + result)
                             .append(" = load ")
                             .append(type.toString())
                             .append(", ")
@@ -1993,17 +1986,25 @@ public class Llvm {
                             .append("\n");
                 }
                 else if (type instanceof LineArrayType) {
-                    // %13 = getelementptr [6 x i32], [6 x i32]* @a, i32 0, i32 0
-                    // 剥下一维，从数组中找到入口地址（首位地址
-                    sb.append(result)
-                            .append(" = getelementptr")
-                            .append(type.toString())
-                            .append(", ")
-                            .append(type.toString())
-                            .append("* ")
-                            .append(ident.getTNum())
-                            .append(", i32 0, i32 0") // 不需要位移，两个i32即可
-                            .append("\n");
+                    if (((LineArrayType) type).getLen() == -1) {
+                        result = ident.getTNum();
+                    }
+                    else {
+                        // 分配寄存器
+                        result = "%a" + baseBlockCounter;
+                        baseBlockCounter++;
+                        // %13 = getelementptr [6 x i32], [6 x i32]* @a, i32 0, i32 0
+                        // 剥下一维，从数组中找到入口地址（首位地址
+                        sb.append("    " + result)
+                                .append(" = getelementptr ")
+                                .append(type.toString())
+                                .append(", ")
+                                .append(type.toString())
+                                .append("* ")
+                                .append(ident.getTNum())
+                                .append(", i32 0, i32 0") // 不需要位移，两个i32即可
+                                .append("\n");
+                    }
                 }
                 addLlvm(sb.toString());
             }
