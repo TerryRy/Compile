@@ -1877,17 +1877,30 @@ public class Llvm {
                     }
                 }
                 else {
-                    // 生成全1掩码
-//                    addLlvm("    %mask = " + pair.getType().toString() + " -1\n");
+//                  %is_zero = icmp eq i32 %a, 0
+//                  使用 select 指令根据条件选择返回值
+//                  %result = select i1 %is_zero, i32 1, i32 0
                     result = "%a" + baseBlockCounter;
                     baseBlockCounter++;
-                    StringBuilder sb_icmp = new StringBuilder("    ")
-                            .append(result)
-                            .append(" = xor ")
+                    String isZero = "%a" + baseBlockCounter;
+                    baseBlockCounter++;
+                    StringBuilder sb_isZero = new StringBuilder("    ");
+                    sb_isZero.append(isZero)
+                            .append(" = icmp eq ")
                             .append(pair.getType().toString())
                             .append(" ")
                             .append(pair.getResult())
-                            .append(", -1")
+                            .append(", 0\n");
+                    addLlvm(sb_isZero.toString());
+                    StringBuilder sb_icmp = new StringBuilder("    ")
+                            .append(result)
+                            .append(" = select i1 ")
+                            .append(isZero)
+                            .append(", ")
+                            .append(pair.getType().toString())
+                            .append(" 1, ")
+                            .append(pair.getType().toString())
+                            .append(" 0")
                             .append("\n");
                     addLlvm(sb_icmp.toString());
                     return new Pair(IntegerType.i32, result, null, false);
