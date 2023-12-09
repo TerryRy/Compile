@@ -1,0 +1,9 @@
+! is ok
+< has problem
+> has problem
+<= has problem
+>= has problem
+== != has problem
+or is ok
+the priority of and/or is ok
+6 7

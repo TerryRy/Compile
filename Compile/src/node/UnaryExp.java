@@ -2,6 +2,7 @@ package node;
 
 import Syntax.Syner;
 import Token.Token;
+import llvm.Container.Pair;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -15,6 +16,7 @@ public class UnaryExp implements Node {
     private Token rb;
     private UnaryOp unaryOp;
     private UnaryExp unaryExp;
+    private Pair pair; // 仅在llvm的visitEqExp和visitRelExp临时手动生成UnaryExp使用，对语法树无影响
 
     public UnaryExp(PrimaryExp primaryExp, Token ident, Token lb, FuncRParams funcRParams, Token rb, UnaryOp unaryOp, UnaryExp unaryExp) {
         this.primaryExp = primaryExp;
@@ -24,6 +26,18 @@ public class UnaryExp implements Node {
         this.rb = rb;
         this.unaryOp = unaryOp;
         this.unaryExp = unaryExp;
+        this.pair = null;
+    }
+
+    public UnaryExp(Pair pair) {
+        this.primaryExp = null;
+        this.ident = null;
+        this.lb = null;
+        this.funcRParams = null;
+        this.rb = null;
+        this.unaryOp = null;
+        this.unaryExp = null;
+        this.pair = pair;
     }
 
     public PrimaryExp getPrimaryExp() {
@@ -52,6 +66,10 @@ public class UnaryExp implements Node {
 
     public UnaryOp getUnaryOp() {
         return unaryOp;
+    }
+
+    public Pair getPair() {
+        return pair;
     }
 
     @Override
