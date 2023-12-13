@@ -13,6 +13,7 @@ import llvm.Container.Triple;
 import llvm.TreeTable.Line.*;
 import llvm.TreeTable.Line.LineFuncFParam;
 import llvm.TreeTable.TableNode;
+import llvm2mips.llvmCommand.*;
 import node.*;
 
 import java.io.BufferedWriter;
@@ -31,6 +32,12 @@ public class Llvm {
         return llvm;
     }
 
+    private static List<LlvmCom> llvmComs = new ArrayList<>();
+
+    public List<LlvmCom> getLlvmComs() {
+        return llvmComs;
+    }
+
     public void llvmPrinter(BufferedWriter writerLlvm) throws IOException {
         for (String str : llvm_ir) {
             writerLlvm.write(str);
@@ -38,7 +45,7 @@ public class Llvm {
     }
 
     /*
-    * 工具变量
+     * 工具变量
      */
     // 待打印llvm代码
     private static List<String> llvm_ir = new ArrayList<>();
@@ -59,12 +66,35 @@ public class Llvm {
     // 时代变了，每个基本块和每个临时寄存器一个编号，只好全局一个计数器跑到底了
     private int baseBlockCounter = 0;
 
+    // 记录addLlvm当前块是否已经遇到可以跳出块的部分
+    boolean isOver = true;
     /*
-    * 工具函数
+     * 工具函数
      */
     // 添加汇编码
+    public void addLlvm(String str, LlvmCom llvmCom) {
+        llvm_ir.add(str);
+        if (llvmCom instanceof DeclareFunc || llvmCom instanceof NewBlock) {
+            isOver = false; // 未遇到br或return
+        }
+        if (llvmCom instanceof Br || llvmCom instanceof Ret) {
+            isOver = true;
+        }
+        if (!isOver) {
+            llvmComs.add(llvmCom);
+        }
+    }
+
+    // 有的时候确实不用添加什么
     public void addLlvm(String str) {
         llvm_ir.add(str);
+    }
+
+    // 发现我有时候很不优雅的一个addLlvm加两条，为了防止我乱改改错，添加此补救措施
+    public void addLlvm(String str, LlvmCom llvmCom1, LlvmCom llvmCom2) {
+        llvm_ir.add(str);
+        llvmComs.add(llvmCom1);
+        llvmComs.add(llvmCom2);
     }
 
     // 获取根节点
@@ -183,16 +213,19 @@ public class Llvm {
         curNode.addLine(lineFunc);
         // 添加汇编码
         StringBuilder sb = new StringBuilder("");
+        List<FFParam> ffParams = new ArrayList<>();
         if (fParamList.size() > 0) {
             LineIdent lineIdent = fParamList.get(0).getLineIdent();
             Type type = IntegerType.i32; // 默认i32
             if (lineIdent instanceof Ident) {
                 type = ((Ident) lineIdent).getLineIdentType();
                 sb.append(type.toString());
+                ffParams.add(new FFParam(type, lineIdent.getTNum()));
             }
             else if (lineIdent instanceof Array) {
                 type = ((LineArrayType) ((Array) lineIdent).getLineIdentType()).getElementType();
                 sb.append(type.toString()).append("*");
+                ffParams.add(new FFParam(type, lineIdent.getTNum(), true));
             }
             sb.append(" ").append(lineIdent.getTNum());
         }
@@ -203,14 +236,16 @@ public class Llvm {
             if (lineIdent instanceof Ident) {
                 type = lineIdent.getLineIdentType();
                 sb.append(type.toString());
+                ffParams.add(new FFParam(type, lineIdent.getTNum()));
             }
             else if (lineIdent instanceof Array) {
                 type = lineIdent.getLineIdentType();
                 sb.append(type.toString());
+                ffParams.add(new FFParam(type, lineIdent.getTNum()));
             }
             sb.append(" ").append(lineIdent.getTNum());
         }
-        addLlvm("define dso_local" + " " + funcType.toString() + " " + "@" + token + "(" + sb.toString() + ") {\n");
+        addLlvm("define dso_local" + " " + funcType.toString() + " " + "@" + token + "(" + sb.toString() + ") {\n", new DeclareFunc(true, funcType, token, ffParams));
     }
 
     public void addIdentLine(String name, Pair pair, boolean isConst, boolean isGlobal) {
@@ -230,12 +265,12 @@ public class Llvm {
                     .append(isConst ? "constant" : "global")
                     .append(" ")
                     .append(type.toString());
-                    if (value != null) {
-                        sb.append(" ")
-                                .append(value);
-                    }
-                    sb.append("\n");
-                    addLlvm(sb.toString());
+            if (value != null) {
+                sb.append(" ")
+                        .append(value);
+            }
+            sb.append("\n");
+            addLlvm(sb.toString(), new DefineIdent(isConst, type, name, value));
         }
         else {
             /*
@@ -254,11 +289,13 @@ public class Llvm {
                     .append(" = alloca ")
                     .append(type.toString())
                     .append("\n");
+            addLlvm(sb.toString(), new Alloca(tNum, type));
             if (type instanceof IntegerType) {
                 Ident ident = new Ident(name, tNum, isConst, curBbNum, type, value);
                 curNode.addLine(ident);
+                StringBuilder sb1 = new StringBuilder();
                 if (value != null) {
-                    sb.append("    store ")
+                    sb1.append("    store ")
                             .append(type)
                             .append(" ")
                             .append(value)
@@ -268,15 +305,16 @@ public class Llvm {
                             .append(tNum)
                             .append("\n");
                 }
-                addLlvm(sb.toString());
+                addLlvm(sb1.toString(),  new Store(type, false, value, type, true, tNum));
             }
             else {
                 // 数组
                 Array array = new Array(name, tNum, isConst, pair.getType(), curBbNum, value);
                 curNode.addLine(array);
+                StringBuilder sb2 = new StringBuilder();
                 if (((LineArrayType) type).getLen() == -1) {
                     // 函数形参
-                    sb.append("    store ")
+                    sb2.append("    store ")
                             .append(type)
                             .append(" ")
                             .append(value)
@@ -285,11 +323,10 @@ public class Llvm {
                             .append("* ")
                             .append(tNum)
                             .append("\n");
-                    addLlvm(sb.toString());
+                    addLlvm(sb2.toString(), new Store(type, false, value, type, true, tNum));
                 }
                 else {
                     // 正经初始化
-                    addLlvm(sb.toString());
                     initArray(new ArrayList<Integer>(), pair, pair, tNum);
                 }
             }
@@ -323,6 +360,7 @@ public class Llvm {
                 String result = "%a" + baseBlockCounter;
                 baseBlockCounter++;
                 StringBuilder sb = new StringBuilder("    ");
+                List<String> tys = new ArrayList<>();
                 sb.append(result)
                         .append(" = getelementptr ")
                         .append(allPair.getType().toString())
@@ -332,11 +370,13 @@ public class Llvm {
                         .append(tNum)
                         // 赠送一个0，意为不做最高维的位移（废话初始化一步到位取地址为什么要在最高维位移
                         .append(", i32 0");
+                tys.add("0");
                 for (Integer integer : coordinate) {
                     sb.append(", i32 ").append(String.valueOf(integer));
+                    tys.add(String.valueOf(integer));
                 }
                 sb.append("\n");
-                addLlvm(sb.toString());
+                addLlvm(sb.toString(), new Getelementptr(result, allPair.getType(), false, allPair.getType(), true, tNum, tys));
 
                 // 存值
                 StringBuilder sb_store = new StringBuilder("    ");
@@ -349,7 +389,7 @@ public class Llvm {
                         .append("* ")
                         .append(result)
                         .append("\n");
-                addLlvm(sb_store.toString());
+                addLlvm(sb_store.toString(), new Store(((LineArrayType) allPair.getType()).getBaseType(), readArrayValue(allPair, coordinate).getResult(), ((LineArrayType) allPair.getType()).getBaseType(), result));
                 coordinate.remove(coordinate.size() - 1);
             }
         }
@@ -455,7 +495,7 @@ public class Llvm {
     }
 
     /*
-    * 遍历语法树
+     * 遍历语法树
      */
 
     public void analyze(CompUnit compUnit) {
@@ -474,10 +514,16 @@ public class Llvm {
         declare void @putch(i32)
         declare void @putstr(i8*)
         */
-        addLlvm("declare i32 @getint()\n");
-        addLlvm("declare void @putint(i32)\n");
-        addLlvm("declare void @putch(i32)\n");
-        addLlvm("declare void @putstr(i8*)\n\n");
+        addLlvm("declare i32 @getint()\n", new DeclareFunc(false, IntegerType.i32, "getint", null));
+        List<FFParam> ffParams1 = new ArrayList<>();
+        ffParams1.add(new FFParam(IntegerType.i32, null));
+        addLlvm("declare void @putint(i32)\n", new DeclareFunc(false, FuncVoidType.typeVoid, "putint", ffParams1));
+        List<FFParam> ffParams2 = new ArrayList<>();
+        ffParams2.add(new FFParam(IntegerType.i32, null));
+        addLlvm("declare void @putch(i32)\n", new DeclareFunc(false, FuncVoidType.typeVoid, "putch", ffParams2));
+        List<FFParam> ffParams3 = new ArrayList<>();
+        ffParams3.add(new FFParam(IntegerType.i8, null));
+        addLlvm("declare void @putstr(i8*)\n\n", new DeclareFunc(false, FuncVoidType.typeVoid, "putstr", ffParams3));
         if (compUnit.getDecls() != null) {
             for (Decl decl : compUnit.getDecls()) {
                 visitDecl(decl, true);
@@ -962,7 +1008,7 @@ public class Llvm {
                     hasReturn = true;
             }
             if (funcCall && !hasReturn) {
-                addLlvm("    ret void");
+                addLlvm("    ret void\n", new Ret(FuncVoidType.typeVoid));
             }
 //            addLlvm("}\n");
 //            addLlvm("\n");
@@ -1017,7 +1063,7 @@ public class Llvm {
                     .append("* ")
                     .append(left.getTNum())
                     .append("\n");
-            addLlvm(sb.toString());
+            addLlvm(sb.toString(), new Store(type2, false, value, left.getLineIdentType(), true, left.getTNum()));
         }
         else if (stmt.getType() == Stmt.StmtType.Exp) {
             // [Exp] ';'
@@ -1034,7 +1080,7 @@ public class Llvm {
             // 分配2/3个基本块计数器，分为if else then，
             String blockCond = "a" + baseBlockCounter;
             baseBlockCounter++;
-            addLlvm("    br label %" + blockCond + "\n");
+            addLlvm("    br label %" + blockCond + "\n", new Br(blockCond));
             if (stmt.getElseToken() != null) {
                 // 三个基本块
                 String blockIf = "a" + baseBlockCounter;
@@ -1044,13 +1090,13 @@ public class Llvm {
                 String blockThen = "a" + baseBlockCounter;
                 baseBlockCounter++;
                 visitCond(stmt.getCond(), blockIf, blockElse, blockCond);
-                addLlvm(blockIf + ":\n");
+                addLlvm(blockIf + ":\n", new NewBlock(blockIf));
                 visitStmt(stmt.getStmtList().get(0), blockBreak, blockContinue);
-                addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockElse + ":\n");
+                addLlvm("    br label %" + blockThen + "\n", new Br(blockThen));
+                addLlvm(blockElse + ":\n", new NewBlock(blockElse));
                 visitStmt(stmt.getStmtList().get(1), blockBreak, blockContinue);
-                addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockThen + ":\n");
+                addLlvm("    br label %" + blockThen + "\n", new Br(blockThen));
+                addLlvm(blockThen + ":\n", new NewBlock(blockThen));
             }
             else {
                 // 两个基本块
@@ -1059,10 +1105,10 @@ public class Llvm {
                 String blockThen = "a" + baseBlockCounter;
                 baseBlockCounter++;
                 visitCond(stmt.getCond(), blockIf, blockThen, blockCond);
-                addLlvm(blockIf + ":\n");
+                addLlvm(blockIf + ":\n", new NewBlock(blockIf));
                 visitStmt(stmt.getStmtList().get(0), blockBreak, blockContinue);
-                addLlvm("    br label %" + blockThen + "\n");
-                addLlvm(blockThen + ":\n");
+                addLlvm("    br label %" + blockThen + "\n", new Br(blockThen));
+                addLlvm(blockThen + ":\n", new NewBlock(blockThen));
 
             }
         }
@@ -1112,26 +1158,26 @@ public class Llvm {
             baseBlockCounter++;
             blockOut = "a" + baseBlockCounter;
             baseBlockCounter++;
-            addLlvm("    br label %" + blockCond + "\n");
+            addLlvm("    br label %" + blockCond + "\n", new Br(blockCond));
             // Cond缺省封装入visitCond
             visitCond(stmt.getCond(), blockStmt, blockOut, blockCond);
-            addLlvm(blockStmt + ":\n");
+            addLlvm(blockStmt + ":\n", new NewBlock(blockStmt));
             visitStmt(stmt.getStmtList().get(0), blockOut, blockForStmt2);
-            addLlvm("    br label %" + blockForStmt2 + "\n");
-            addLlvm(blockForStmt2 + ":\n");
+            addLlvm("    br label %" + blockForStmt2 + "\n", new Br(blockForStmt2));
+            addLlvm(blockForStmt2 + ":\n", new NewBlock(blockForStmt2));
             if (stmt.getForStmt2() != null) {
                 visitForStmt(stmt.getForStmt2());
             }
-            addLlvm("    br label %" + blockCond + "\n");
-            addLlvm(blockOut + ":\n");
+            addLlvm("    br label %" + blockCond + "\n", new Br(blockCond));
+            addLlvm(blockOut + ":\n", new NewBlock(blockOut));
         }
         else if (stmt.getType() == Stmt.StmtType.Break) {
             // 'break' ';'
-            addLlvm("    br label %" + blockBreak + "\n");
+            addLlvm("    br label %" + blockBreak + "\n", new Br(blockBreak));
         }
         else if (stmt.getType() == Stmt.StmtType.Continue) {
             // 'continue' ';'
-            addLlvm("    br label %" + blockContinue + "\n");
+            addLlvm("    br label %" + blockContinue + "\n", new Br(blockContinue));
         }
         else if (stmt.getType() == Stmt.StmtType.Return) {
             // 'return' [Exp] ';'
@@ -1140,10 +1186,10 @@ public class Llvm {
                 Pair pair = visitExp(stmt.getExp(), false, false);
 //                sb.append(" ").append(pair.getType().toString()).append(" ").append(pair.getResult());
 //                addLlvm("    " + sb.toString() + "\n");
-                addLlvm("    ret " + pair.getType().toString() + " " + pair.getResult() + "\n");
+                addLlvm("    ret " + pair.getType().toString() + " " + pair.getResult() + "\n", new Ret(pair.getType(), pair.getResult()));
                 return new Pair(TypeReturn.ret, "ReturnTk", null, false);
             }
-            addLlvm("    ret void\n");
+            addLlvm("    ret void\n", new Ret(FuncVoidType.typeVoid));
             return new Pair(TypeReturn.ret, "ReturnTk", null, false);
             // Return的返回值不重要，只需要能识别出来时return的返回值，因此采用tpye = TypeReturn.ret
         }
@@ -1162,7 +1208,7 @@ public class Llvm {
                     .append(" = call ")
                     .append(type.toString())
                     .append(" @getint()\n");
-            addLlvm(sb_call.toString());
+            addLlvm(sb_call.toString(), new Call(result, type, "getint", null));
             // 又是左值不能是数组，直接转换Ident
             Ident ident = (Ident) visitLVal(stmt.getLVal(), result, true);
             StringBuilder sb_store = new StringBuilder("    ");
@@ -1175,7 +1221,7 @@ public class Llvm {
                     .append("* ")
                     .append(ident.getTNum())
                     .append("\n");
-            addLlvm(sb_store.toString());
+            addLlvm(sb_store.toString(), new Store(type, false, result, ident.getLineIdentType(), true, ident.getTNum()));
         }
         else if (stmt.getType() == Stmt.StmtType.Printf) {
             // 'printf''('FormatString{','Exp}')'';'
@@ -1198,7 +1244,9 @@ public class Llvm {
                                 .append(pair.getResult())
                                 .append(")")
                                 .append("\n");
-                        addLlvm(sb.toString());
+                        List<FRParam> frParams = new ArrayList<>();
+                        frParams.add(new FRParam(pair.getType(), pair.getResult()));
+                        addLlvm(sb.toString(), new Call(FuncVoidType.typeVoid, "putint", frParams));
                     }
                     else {
                         // 其他数据类型，暂时没有
@@ -1209,12 +1257,16 @@ public class Llvm {
                 else if (c == '\\') {
                     // '\n'
                     i++;
-                    addLlvm("    call void @putch(i32 10)\n");
+                    List<FRParam> frParams = new ArrayList<>();
+                    frParams.add(new FRParam(IntegerType.i32, "10"));
+                    addLlvm("    call void @putch(i32 10)\n", new Call(FuncVoidType.typeVoid, "putch", frParams));
                 }
                 else {
                     // 正常打印
                     // call void @putch(i32 101)
-                    addLlvm("    call void @putch(i32 " + ((int) c) + ")\n");
+                    List<FRParam> frParams = new ArrayList<>();
+                    frParams.add(new FRParam(IntegerType.i32, ((int) c) + ""));
+                    addLlvm("    call void @putch(i32 " + ((int) c) + ")\n", new Call(FuncVoidType.typeVoid, "putch", frParams));
                 }
 
             }
@@ -1230,10 +1282,10 @@ public class Llvm {
 
     public void visitCond(Cond cond, String blockTrue, String blockFalse, String blockCond) {
         // Cond → LOrExp
-        addLlvm(blockCond + ":\n");
+        addLlvm(blockCond + ":\n", new NewBlock(blockCond));
         if (cond == null) {
             // 空默认真
-            addLlvm("    br label %" + blockTrue + "\n");
+            addLlvm("    br label %" + blockTrue + "\n", new Br(blockTrue));
         }
         else {
             visitLOrExp(cond.getLOrExp(), blockTrue, blockFalse);
@@ -1263,7 +1315,7 @@ public class Llvm {
             // 第一个失败jump到后面的"LOrExp"处
             jumpFalse = lessLOrExpBlock;
             visitLAndExp(lorExp.getLAndExpList().get(0), jumpTrue, jumpFalse);
-            addLlvm(lessLOrExpBlock + ":\n");
+            addLlvm(lessLOrExpBlock + ":\n", new NewBlock(lessLOrExpBlock));
             List<LAndExp> newLAndExpList = new ArrayList<>(lorExp.getLAndExpList());
             newLAndExpList.remove(0);
             List<Token> newOpList = new ArrayList<>(lorExp.getOpList());
@@ -1297,7 +1349,7 @@ public class Llvm {
             // 第一个为真jump到后面的"LAndExp"处
             jumpTrue = lessLAndExpBlock;
             visitEqExp(lAndExp.getEqExpList().get(0), jumpTrue, jumpFalse);
-            addLlvm(lessLAndExpBlock + ":\n");
+            addLlvm(lessLAndExpBlock + ":\n", new NewBlock(lessLAndExpBlock));
             List<EqExp> newEqList = new ArrayList<>(lAndExp.getEqExpList());
             newEqList.remove(0);
             List<Token> newOpList= new ArrayList<Token>(lAndExp.getOpList());
@@ -1331,7 +1383,7 @@ public class Llvm {
             visitRelExp(eqExp.getRelExpList().get(0), jumpTrue, jumpFalse, false);
             // 取前两个和第一个OP判断
             // 取两个原子元素和一个OP判断，若失败直接跳转，成功则跳转到递归位置
-            addLlvm(curBlock + ":\n");
+            addLlvm(curBlock + ":\n", new NewBlock(curBlock));
             String lessEqExpBlock = null;
             lessEqExpBlock = "a" + baseBlockCounter;
             baseBlockCounter++;
@@ -1365,7 +1417,7 @@ public class Llvm {
                     .append(", ")
                     .append(onR.getResult())
                     .append("\n");
-            addLlvm(sb_icmp.toString());
+            addLlvm(sb_icmp.toString(), new Icpm(lResult, op, type, onL.getResult(), onR.getResult()));
             StringBuilder sb_br = new StringBuilder("    ")
                     .append("br i1 ")
                     .append(lResult)
@@ -1374,9 +1426,9 @@ public class Llvm {
                     .append(", label %")
                     .append(jumpFalse)
                     .append("\n");
-            addLlvm(sb_br.toString());
+            addLlvm(sb_br.toString(), new Br(lResult, jumpTrue, jumpFalse));
             // 递归
-            addLlvm(lessEqExpBlock + ":\n");
+            addLlvm(lessEqExpBlock + ":\n", new NewBlock(lessEqExpBlock));
             List<RelExp> newRelExpList = new ArrayList<>(eqExp.getRelExpList());
             newRelExpList.remove(0);
             List<Token> newOpList = new ArrayList<>(eqExp.getOpList());
@@ -1403,7 +1455,7 @@ public class Llvm {
                     .append(" = icmp ne i32 0, ")
                     .append(pair.getResult())
                     .append("\n");
-            addLlvm(sb_icmp.toString());
+            addLlvm(sb_icmp.toString(), new Icpm(result, "ne", IntegerType.i32, "0", pair.getResult()));
             StringBuilder sb_br = new StringBuilder("    ")
                     .append("br i1 ")
                     .append(result)
@@ -1412,7 +1464,7 @@ public class Llvm {
                     .append(", label %")
                     .append(jumpFalse)
                     .append("\n");
-            addLlvm(sb_br.toString());
+            addLlvm(sb_br.toString(), new Br(result, jumpTrue, jumpFalse));
         }
         else {
             // 类似add，
@@ -1449,7 +1501,7 @@ public class Llvm {
                     .append(", ")
                     .append(onR.getResult())
                     .append("\n");
-            addLlvm(sb_icmp.toString());
+            addLlvm(sb_icmp.toString(), new Icpm(lResult, op, type, onL.getResult(), onR.getResult()));
             String result = "%a" + baseBlockCounter;
             baseBlockCounter++;
             StringBuilder sb_select = new StringBuilder("    ")
@@ -1462,7 +1514,7 @@ public class Llvm {
                     .append(type)
                     .append(" 0")
                     .append("\n");
-            addLlvm(sb_select.toString());
+            addLlvm(sb_select.toString(), new Select(result, IntegerType.i1, lResult, type, "1", type, "0"));
             // 递归
             List<RelExp> newRelExpList = new ArrayList<>(eqExp.getRelExpList());
             newRelExpList.remove(0);
@@ -1512,7 +1564,7 @@ public class Llvm {
                         .append(" = icmp ne i32 0, ")
                         .append(singlePair.getResult())
                         .append("\n");
-                addLlvm(sb_icmp.toString());
+                addLlvm(sb_icmp.toString(), new Icpm(lResult, "ne", IntegerType.i32, "0", singlePair.getResult()));
                 StringBuilder sb_br = new StringBuilder("    ")
                         .append("br i1 ")
                         .append(lResult)
@@ -1521,10 +1573,10 @@ public class Llvm {
                         .append(", label %")
                         .append(jumpFalse)
                         .append("\n");
-                addLlvm(sb_br.toString());
+                addLlvm(sb_br.toString(), new Br(lResult, jumpTrue, jumpFalse));
             }
             else {
-                addLlvm("    br label %" + blockTrue + "\n");
+                addLlvm("    br label %" + blockTrue + "\n", new Br(blockTrue));
             }
         }
         else {
@@ -1580,7 +1632,7 @@ public class Llvm {
                     .append(", ")
                     .append(pair2.getResult())
                     .append("\n");
-            addLlvm(sb_icmp.toString());
+            addLlvm(sb_icmp.toString(), new Icpm(result, op, type, pair1.getResult(), pair2.getResult()));
             StringBuilder sb_br = new StringBuilder("    ")
                     .append("br i1 ")
                     .append(result)
@@ -1589,12 +1641,12 @@ public class Llvm {
                     .append(", label %")
                     .append(jumpFalse)
                     .append("\n");
-            addLlvm(sb_br.toString());
+            addLlvm(sb_br.toString(), new Br(result, jumpTrue, jumpFalse));
             if (relExp.getAddExpList().size() == 2) {
 
             }
             else {
-                addLlvm(lessRelBlock + ":\n");
+                addLlvm(lessRelBlock + ":\n", new Br(lessRelBlock));
                 List<AddExp> newAddExpList = new ArrayList<>(relExp.getAddExpList());
                 newAddExpList.remove(0);
                 List<Token> newOpList = new ArrayList<>(relExp.getOpList());
@@ -1656,7 +1708,7 @@ public class Llvm {
                     .append(", ")
                     .append(pair2.getResult())
                     .append("\n");
-            addLlvm(sb_icmp.toString());
+            addLlvm(sb_icmp.toString(), new Icpm(isZero, op, type, pair1.getResult(), pair2.getResult()));
             String result = "%a" + baseBlockCounter;
             baseBlockCounter++;
             StringBuilder sb_select = new StringBuilder("    ")
@@ -1669,7 +1721,7 @@ public class Llvm {
                     .append(type.toString())
                     .append(" 0")
                     .append("\n");
-            addLlvm(sb_select.toString());
+            addLlvm(sb_select.toString(), new Select(result, IntegerType.i1, isZero, type, "1", type, "0"));
             List<AddExp> newAddExpList = new ArrayList<>(relExp.getAddExpList());
             newAddExpList.remove(0);
             newAddExpList.remove(0);
@@ -1740,6 +1792,9 @@ public class Llvm {
             Type type = ident.getLineIdentType();
             // 添加读值的中间代码
             StringBuilder sb_load = new StringBuilder("    ");
+            List<String> tys = new ArrayList<>();
+            Type llvmType;
+            String llvmValue;
             if (((LineArrayType) type).getLen() == -1) {
                 // 函数形参，特殊处理（降一维
                 // 先将**读到*中
@@ -1755,33 +1810,39 @@ public class Llvm {
                         .append("* ")
                         .append(ident.getTNum())
                         .append("\n");
-                addLlvm(sb_load_ptr.toString());
+                addLlvm(sb_load_ptr.toString(), new Load(type, false, result_ptr, type, true,  ident.getTNum()));
+                llvmType = ((LineArrayType) type).getElementType();
                 sb_load.append(result)
                         .append(" = getelementptr ")
-                        .append(((LineArrayType) type).getElementType())
+                        .append(llvmType)
                         .append(", ")
-                        .append(((LineArrayType) type).getElementType())
+                        .append(llvmType)
                         .append("* ")
                         .append(result_ptr);
+                llvmValue = result_ptr;
             }
             else{
+                llvmType = type;
                 sb_load.append(result)
                         .append(" = getelementptr ")
-                        .append(type)
+                        .append(llvmType)
                         .append(", ")
-                        .append(type)
+                        .append(llvmType)
                         .append("* ")
                         .append(ident.getTNum())
                         // 赠送0，因为不在最高维度整体偏移
                         .append(", i32 0");
+                tys.add("0");
+                llvmValue = ident.getTNum();
             }
             for (Exp aExp : lVal.getExpList()) {
                 String curCoordinate = visitExp(aExp, false, false).getResult();
                 sb_load.append(", i32 ")
                         .append(curCoordinate);
+                tys.add(curCoordinate);
             }
             sb_load.append("\n");
-            addLlvm(sb_load.toString());
+            addLlvm(sb_load.toString(), new Getelementptr(result, llvmType, false, llvmType, true, llvmValue, tys));
             for (int i = 0; i < lVal.getExpList().size(); i++) {
                 type = ((LineArrayType) type).getElementType();
             }
@@ -1905,7 +1966,19 @@ public class Llvm {
             result = "%a" + baseBlockCounter;
             baseBlockCounter++;
             // 格式%2 = sub i32 0, %1
-            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + on1 + ", " + on2 + "\n");
+            addLlvm("    "
+                    + result
+                    + " = "
+                    + op
+                    + " "
+                    + type.toString()
+                    + " "
+                    + on1
+                    +
+                    ", "
+                    + on2
+                    + "\n",
+                    new Compute(result, op, type, on1, on2));
             return new Pair(type, result, null, false);
         }
     }
@@ -2007,7 +2080,19 @@ public class Llvm {
             result = "%a" + baseBlockCounter;
             baseBlockCounter++;
             // 格式%2 = sub i32 0, %1
-            addLlvm("    " + result + " = " + op + " " + type.toString() + " " + on1 + ", " + on2 + "\n");
+            addLlvm("    "
+                    + result
+                    + " = "
+                    + op
+                    + " "
+                    + type.toString()
+                    + " "
+                    + on1
+                    + ", "
+                    + on2
+                    + "\n",
+                    new Compute(result, op, type, on1, on2)
+            );
             return new Pair(type, result, null, result.equals("0"));
         }
     }
@@ -2044,7 +2129,16 @@ public class Llvm {
 //            getCurNode().addCurTCounter();
                 result = "%a" + baseBlockCounter;
                 baseBlockCounter++;
-                addLlvm("    " + result + " = mul " + type.toString() + " " + "-1" + ", " + on + "\n");
+                addLlvm("    "
+                        + result
+                        + " = mul "
+                        + type.toString()
+                        + " "
+                        + "-1"
+                        + ", "
+                        + on
+                        + "\n",
+                        new Compute(result, "mul", type, "-1", on));
                 return new Pair(type, result, null, false);
             }
             else if (unaryExp.getUnaryOp().getOpToken().getToken().equals("!")){
@@ -2075,7 +2169,7 @@ public class Llvm {
                             .append(" ")
                             .append(pair.getResult())
                             .append(", 0\n");
-                    addLlvm(sb_isZero.toString());
+                    addLlvm(sb_isZero.toString(), new Icpm(isZero, "eq", pair.getType(), pair.getResult(), "0"));
                     StringBuilder sb_icmp = new StringBuilder("    ")
                             .append(result)
                             .append(" = select i1 ")
@@ -2086,7 +2180,7 @@ public class Llvm {
                             .append(pair.getType().toString())
                             .append(" 0")
                             .append("\n");
-                    addLlvm(sb_icmp.toString());
+                    addLlvm(sb_icmp.toString(), new Select(result, IntegerType.i1, isZero, pair.getType(), "1", pair.getType(), "0"));
                     return new Pair(IntegerType.i32, result, null, false);
                 }
             }
@@ -2108,6 +2202,7 @@ public class Llvm {
                 funcRParams = new ArrayList<Pair>();
             }
             StringBuilder sb = new StringBuilder("    ");
+            List<FRParam> frParams = new ArrayList<>();
             if (!lineFunc.getType().equals(FuncVoidType.typeVoid)) {
                 result = "%a" + baseBlockCounter;
                 baseBlockCounter++;
@@ -2127,15 +2222,22 @@ public class Llvm {
                 sb.append(funcRParams.get(0).getTypeForCall())
                         .append(" ")
                         .append(funcRParams.get(0).getResult());
+                frParams.add(new FRParam(funcRParams.get(0).getType().getTypeForMips(), funcRParams.get(0).getType() instanceof LineArrayType, funcRParams.get(0).getResult()));
             }
             for (int i = 1; i < funcRParams.size(); i++) {
                 sb.append(", ")
                         .append(funcRParams.get(i).getTypeForCall())
                         .append(" ")
                         .append(funcRParams.get(i).getResult());
+                frParams.add(new FRParam(funcRParams.get(i).getType().getTypeForMips(), funcRParams.get(0).getType() instanceof LineArrayType, funcRParams.get(i).getResult()));
             }
             sb.append(")\n");
-            addLlvm(sb.toString());
+            if (!lineFunc.getType().equals(FuncVoidType.typeVoid)) {
+                addLlvm(sb.toString(), new Call(result, type, lineFunc.getName(), frParams));
+            }
+            else {
+                addLlvm(sb.toString(), new Call(type, lineFunc.getName(), frParams));
+            }
             return new Pair(type, result, null, result.equals("0"));
         }
     }
@@ -2181,6 +2283,7 @@ public class Llvm {
                             .append("* ")
                             .append(ident.getTNum())
                             .append("\n");
+                    addLlvm(sb.toString(), new Load(type, false, result, type, true, ident.getTNum()));
                 }
                 else if (type instanceof LineArrayType) {
                     if (((LineArrayType) type).getLen() == -1) {
@@ -2202,8 +2305,8 @@ public class Llvm {
                                 .append(", i32 0, i32 0") // 不需要位移，两个i32即可
                                 .append("\n");
                     }
+                    addLlvm(sb.toString());
                 }
-                addLlvm(sb.toString());
             }
             return new Pair(type, result, null, false);
         }

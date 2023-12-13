@@ -10,4 +10,9 @@ public class TypeReturn implements Type {
     public String toStringForCall() {
         return "ReturnTk";
     }
+
+    @Override
+    public Type getTypeForMips() {
+        return FuncVoidType.typeVoid;
+    }
 }

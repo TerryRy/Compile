@@ -8,4 +8,5 @@ public class Config {
     public static boolean syner = false;
     public static boolean error = true;
     public static boolean llvm = true;
+    public static boolean mips = true;
 }

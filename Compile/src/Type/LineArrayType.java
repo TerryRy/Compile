@@ -58,4 +58,9 @@ public class LineArrayType extends LineFuncType implements Type {
         return this.elementType.toString() + "*";
     }
 
+    @Override
+    public Type getTypeForMips() {
+        return this.elementType;
+    }
+
 }

@@ -43,6 +43,11 @@ public class IntegerType extends LineFuncType implements Type, Comparable<Intege
     }
 
     @Override
+    public Type getTypeForMips() {
+        return this;
+    }
+
+    @Override
     public int compareTo(IntegerType other) {
         if (this.bit > other.bit) {
             return 1;

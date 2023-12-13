@@ -3,6 +3,7 @@ import Syntax.Syner;
 import config.Config;
 import error.EM;
 import llvm.Llvm;
+import llvm2mips.Mips;
 
 import java.io.*;
 
@@ -50,6 +51,17 @@ public class Compiler {
                 writerLlvm = new BufferedWriter(new FileWriter("./llvm_ir.txt", true));
                 Llvm.getLlvm().llvmPrinter(writerLlvm);
                 writerLlvm.close();
+            }
+
+            if (Config.mips) {
+                Mips.getMips().analyze(Llvm.getLlvm().getLlvmComs());
+                Llvm.getLlvm().analyze(Syner.getSyner().getCompUnit());
+                BufferedWriter writerMips = new BufferedWriter(new FileWriter("./mips.txt"));
+                writerMips.write("");
+                writerMips.close();
+                writerMips = new BufferedWriter(new FileWriter("./mips.txt", true));
+                Mips.getMips().mipsPrinter(writerMips);
+                writerMips.close();
             }
 
             writer.close();

@@ -5,4 +5,5 @@ package Type;
  */
 public interface Type {
     String toStringForCall();
+    Type getTypeForMips();
 }
