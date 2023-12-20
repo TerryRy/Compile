@@ -15,7 +15,13 @@ public class MacroLine extends MipsDataLine {
 
     @Override
     public String toMips() {
-        // TODO:
-        return super.toMips();
+        StringBuilder sb = new StringBuilder(".macro ");
+        sb.append(name)
+                .append("()\n");
+        for (MipsTextLine line : lines) {
+            sb.append(line.toMips() + "\n");
+        }
+        sb.append(".end_macro");
+        return sb.toString();
     }
 }

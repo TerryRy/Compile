@@ -1,0 +1,734 @@
+.data
+
+.macro GETINT()
+li $v0, 5
+syscall
+.end_macro
+
+.macro PUTINT()
+li $v0, 1
+syscall
+.end_macro
+
+.macro PUTCH()
+li $v0, 11
+syscall
+.end_macro
+
+.macro PUTSTR()
+li $v0, 4
+syscall
+.end_macro
+
+.text
+
+jal main
+
+j return
+
+main:
+
+# call void @putch(i32 50, i32 50)
+
+li $a0, 50
+
+PUTCH()
+
+# call void @putch(i32 49, i32 49)
+
+li $a0, 49
+
+PUTCH()
+
+# call void @putch(i32 51, i32 51)
+
+li $a0, 51
+
+PUTCH()
+
+# call void @putch(i32 55, i32 55)
+
+li $a0, 55
+
+PUTCH()
+
+# call void @putch(i32 49, i32 49)
+
+li $a0, 49
+
+PUTCH()
+
+# call void @putch(i32 50, i32 50)
+
+li $a0, 50
+
+PUTCH()
+
+# call void @putch(i32 57, i32 57)
+
+li $a0, 57
+
+PUTCH()
+
+# call void @putch(i32 53, i32 53)
+
+li $a0, 53
+
+PUTCH()
+
+# call void @putch(i32 10, i32 10)
+
+li $a0, 10
+
+PUTCH()
+
+# %a1 = alloca i32
+
+# store i32 0, i32* %a1
+
+li $t0, 0
+
+sw $t0, 0($sp)
+
+# %a2 = add i32 0, 1
+
+li $t2, 0
+
+li $t3, 1
+
+addu $t1, $t2, $t3
+
+sw $t1, -8($sp)
+
+# a3:
+
+a3:
+
+# %a7 = load i32, i32* %a1
+
+lw $t4, 0($sp)
+
+sw $t4, -12($sp)
+
+# %a8 = icmp sgt i32 %a7, 0
+
+lw $t5, -12($sp)
+
+li $t6, 0
+
+sgt $t7, $t5, $t6
+
+sw $t7, -16($sp)
+
+# %a9 = select i1 %a8, i32 10 0
+
+lw $s0, -16($sp)
+
+seq $s1, $s0, 0
+
+sw $s1, -20($sp)
+
+# %a10 = icmp ne i32 0, %a9
+
+li $s2, 0
+
+lw $s3, -20($sp)
+
+sne $s4, $s2, $s3
+
+sw $s4, -24($sp)
+
+# a4:
+
+a4:
+
+# store i32 1, i32* %a1
+
+li $s5, 1
+
+sw $s5, 0($sp)
+
+# a5:
+
+a5:
+
+# store i32 0, i32* %a1
+
+li $s6, 0
+
+sw $s6, 0($sp)
+
+# a6:
+
+a6:
+
+# %a11 = alloca i32
+
+# store i32 1, i32* %a11
+
+li $s7, 1
+
+sw $s7, -28($sp)
+
+# %a12 = alloca i32
+
+# store i32 2, i32* %a12
+
+li $t2, 2
+
+sw $t2, -36($sp)
+
+# a13:
+
+a13:
+
+# %a16 = load i32, i32* %a11
+
+lw $t3, -28($sp)
+
+sw $t3, -44($sp)
+
+# %a17 = icmp sge i32 %a16, 0
+
+lw $t1, -44($sp)
+
+li $t4, 0
+
+sge $t5, $t1, $t4
+
+sw $t5, -48($sp)
+
+# %a18 = select i1 %a17, i32 10 0
+
+lw $t6, -48($sp)
+
+seq $t7, $t6, 0
+
+sw $t7, -52($sp)
+
+# %a19 = icmp ne i32 0, %a18
+
+li $s0, 0
+
+lw $s1, -52($sp)
+
+sne $s2, $s0, $s1
+
+sw $s2, -56($sp)
+
+# a14:
+
+a14:
+
+# store i32 1, i32* %a11
+
+li $s3, 1
+
+sw $s3, -28($sp)
+
+# a15:
+
+a15:
+
+# a20:
+
+a20:
+
+# %a23 = load i32, i32* %a11
+
+lw $s4, -28($sp)
+
+sw $s4, -60($sp)
+
+# %a24 = icmp sge i32 %a23, 0
+
+lw $t3, -60($sp)
+
+li $t1, 0
+
+sge $t4, $t3, $t1
+
+sw $t4, -64($sp)
+
+# %a25 = select i1 %a24, i32 10 0
+
+lw $t5, -64($sp)
+
+seq $t6, $t5, 0
+
+sw $t6, -68($sp)
+
+# %a26 = icmp ne i32 0, %a25
+
+li $t7, 0
+
+lw $s0, -68($sp)
+
+sne $s1, $t7, $s0
+
+sw $s1, -72($sp)
+
+# a21:
+
+a21:
+
+# a22:
+
+a22:
+
+# a27:
+
+a27:
+
+# %a31 = load i32, i32* %a11
+
+lw $s2, -28($sp)
+
+sw $s2, -76($sp)
+
+# %a33 = icmp eq i32 %a31, 0
+
+lw $s4, -76($sp)
+
+li $t3, 0
+
+seq $t1, $s4, $t3
+
+sw $t1, -80($sp)
+
+# %a32 = select i1 %a33, i32 10 0
+
+lw $t4, -80($sp)
+
+seq $t5, $t4, 0
+
+sw $t5, -84($sp)
+
+# %a34 = icmp ne i32 0, %a32
+
+li $t6, 0
+
+lw $t7, -84($sp)
+
+sne $s0, $t6, $t7
+
+sw $s0, -88($sp)
+
+# a28:
+
+a28:
+
+# a29:
+
+a29:
+
+# a30:
+
+a30:
+
+# a35:
+
+a35:
+
+# %a38 = load i32, i32* %a12
+
+lw $s1, -36($sp)
+
+sw $s1, -92($sp)
+
+# %a39 = icmp sle i32 %a38, 0
+
+lw $s2, -92($sp)
+
+li $s4, 0
+
+sle $t3, $s2, $s4
+
+sw $t3, -96($sp)
+
+# %a40 = select i1 %a39, i32 10 0
+
+lw $t1, -96($sp)
+
+seq $t4, $t1, 0
+
+sw $t4, -100($sp)
+
+# %a41 = icmp ne i32 0, %a40
+
+li $t5, 0
+
+lw $t6, -100($sp)
+
+sne $t7, $t5, $t6
+
+sw $t7, -104($sp)
+
+# a36:
+
+a36:
+
+# store i32 2, i32* %a12
+
+li $s0, 2
+
+sw $s0, -36($sp)
+
+# a37:
+
+a37:
+
+# a42:
+
+a42:
+
+# %a45 = load i32, i32* %a11
+
+lw $s1, -28($sp)
+
+sw $s1, -108($sp)
+
+# %a46 = load i32, i32* %a12
+
+lw $s2, -36($sp)
+
+sw $s2, -112($sp)
+
+# %a47 = icmp eq i32 %a45, %a46
+
+lw $s4, -108($sp)
+
+lw $t3, -112($sp)
+
+seq $t1, $s4, $t3
+
+sw $t1, -116($sp)
+
+# %a48 = select i1 %a47, i32 10 0
+
+lw $t4, -116($sp)
+
+seq $t5, $t4, 0
+
+sw $t5, -120($sp)
+
+# %a49 = icmp ne i32 0, %a48
+
+li $t6, 0
+
+lw $t7, -120($sp)
+
+sne $s1, $t6, $t7
+
+sw $s1, -124($sp)
+
+# a43:
+
+a43:
+
+# store i32 1, i32* %a1
+
+li $s2, 1
+
+sw $s2, 0($sp)
+
+# a44:
+
+a44:
+
+# a50:
+
+a50:
+
+# %a53 = load i32, i32* %a11
+
+lw $s4, -28($sp)
+
+sw $s4, -128($sp)
+
+# %a54 = load i32, i32* %a12
+
+lw $t3, -36($sp)
+
+sw $t3, -132($sp)
+
+# %a55 = icmp ne i32 %a53, %a54
+
+lw $t1, -128($sp)
+
+lw $t4, -132($sp)
+
+sne $t5, $t1, $t4
+
+sw $t5, -136($sp)
+
+# %a56 = select i1 %a55, i32 10 0
+
+lw $t6, -136($sp)
+
+seq $t7, $t6, 0
+
+sw $t7, -140($sp)
+
+# %a57 = icmp ne i32 0, %a56
+
+li $s1, 0
+
+lw $s4, -140($sp)
+
+sne $t3, $s1, $s4
+
+sw $t3, -144($sp)
+
+# a51:
+
+a51:
+
+# store i32 0, i32* %a1
+
+li $t1, 0
+
+sw $t1, 0($sp)
+
+# a52:
+
+a52:
+
+# a58:
+
+a58:
+
+# %a62 = load i32, i32* %a11
+
+lw $t4, -28($sp)
+
+sw $t4, -148($sp)
+
+# %a63 = load i32, i32* %a12
+
+lw $t5, -36($sp)
+
+sw $t5, -152($sp)
+
+# %a64 = icmp ne i32 %a62, %a63
+
+lw $t6, -148($sp)
+
+lw $t7, -152($sp)
+
+sne $s1, $t6, $t7
+
+sw $s1, -156($sp)
+
+# %a65 = select i1 %a64, i32 10 0
+
+lw $s4, -156($sp)
+
+seq $t3, $s4, 0
+
+sw $t3, -160($sp)
+
+# %a66 = icmp ne i32 0, %a65
+
+li $t4, 0
+
+lw $t5, -160($sp)
+
+sne $t6, $t4, $t5
+
+sw $t6, -164($sp)
+
+# a61:
+
+a61:
+
+# %a67 = load i32, i32* %a11
+
+lw $t7, -28($sp)
+
+sw $t7, -168($sp)
+
+# %a68 = icmp sgt i32 %a67, 0
+
+lw $s1, -168($sp)
+
+li $s4, 0
+
+sgt $t3, $s1, $s4
+
+sw $t3, -172($sp)
+
+# %a69 = select i1 %a68, i32 10 0
+
+lw $t4, -172($sp)
+
+seq $t5, $t4, 0
+
+sw $t5, -176($sp)
+
+# %a70 = icmp ne i32 0, %a69
+
+li $t6, 0
+
+lw $t7, -176($sp)
+
+sne $s1, $t6, $t7
+
+sw $s1, -180($sp)
+
+# a59:
+
+a59:
+
+# store i32 1, i32* %a1
+
+li $s4, 1
+
+sw $s4, 0($sp)
+
+# a60:
+
+a60:
+
+# a71:
+
+a71:
+
+# %a75 = load i32, i32* %a11
+
+lw $t3, -28($sp)
+
+sw $t3, -184($sp)
+
+# %a76 = load i32, i32* %a12
+
+lw $t4, -36($sp)
+
+sw $t4, -188($sp)
+
+# %a77 = icmp ne i32 %a75, %a76
+
+lw $t5, -184($sp)
+
+lw $t6, -188($sp)
+
+sne $t7, $t5, $t6
+
+sw $t7, -192($sp)
+
+# %a78 = select i1 %a77, i32 10 0
+
+lw $s1, -192($sp)
+
+seq $t3, $s1, 0
+
+sw $t3, -196($sp)
+
+# %a79 = icmp ne i32 0, %a78
+
+li $t4, 0
+
+lw $t5, -196($sp)
+
+sne $t6, $t4, $t5
+
+sw $t6, -200($sp)
+
+# a74:
+
+a74:
+
+# %a80 = load i32, i32* %a11
+
+lw $t7, -28($sp)
+
+sw $t7, -204($sp)
+
+# %a81 = icmp sgt i32 %a80, 0
+
+lw $s1, -204($sp)
+
+li $t3, 0
+
+sgt $t4, $s1, $t3
+
+sw $t4, -208($sp)
+
+# %a82 = select i1 %a81, i32 10 0
+
+lw $t5, -208($sp)
+
+seq $t6, $t5, 0
+
+sw $t6, -212($sp)
+
+# %a83 = icmp ne i32 0, %a82
+
+li $t7, 0
+
+lw $s1, -212($sp)
+
+sne $t3, $t7, $s1
+
+sw $t3, -216($sp)
+
+# a72:
+
+a72:
+
+# store i32 2, i32* %a1
+
+li $t4, 2
+
+sw $t4, 0($sp)
+
+# a73:
+
+a73:
+
+# %a84 = load i32, i32* %a11
+
+lw $t5, -28($sp)
+
+sw $t5, -220($sp)
+
+# %a85 = add i32 %a84, 1
+
+lw $t7, -220($sp)
+
+li $s1, 1
+
+addu $t6, $t7, $s1
+
+sw $t6, -224($sp)
+
+# %a86 = sub i32 %a85, 0
+
+lw $t5, -224($sp)
+
+li $t7, 0
+
+subu $t3, $t5, $t7
+
+sw $t3, -228($sp)
+
+# store i32 %a86, i32* %a11
+
+lw $s1, -228($sp)
+
+sw $s1, -28($sp)
+
+# store i32 2, i32* %a11
+
+li $t6, 2
+
+sw $t6, -28($sp)
+
+# store i32 -1, i32* %a11
+
+li $t5, -1
+
+sw $t5, -28($sp)
+
+return:
+

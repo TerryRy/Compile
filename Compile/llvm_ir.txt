@@ -3,78 +3,147 @@ declare void @putint(i32)
 declare void @putch(i32)
 declare void @putstr(i8*)
 
-@a = dso_local constant i32 0
-@b = dso_local global [2 x i32] [i32 0, i32 1]
-@c = dso_local global [2 x [2 x i32]] [[2 x i32] [i32 1, i32 2], [2 x i32] [i32 3, i32 4]]
-
-define dso_local i32 @f1() {
-    ret i32 0
-}
-
-define dso_local void @f2(i32 %a1, i32* %a2, [2 x i32]* %a3) {
-    %a5 = alloca i32
-    store i32 %a1, i32* %a5
-    %a6 = alloca i32*
-    store i32* %a2, i32** %a6
-    %a7 = alloca [2 x i32]*
-    store [2 x i32]* %a3, [2 x i32]** %a7
-    %a9 = load [2 x i32]*, [2 x i32]** %a7
-    %a8 = getelementptr [2 x i32], [2 x i32]* %a9, i32 0, i32 1
-    %a10 = load i32, i32* %a8
-    %a12 = load i32*, i32** %a6
-    %a11 = getelementptr i32, i32* %a12, i32 0
-    %a13 = load i32, i32* %a11
-    %a14 = load i32, i32* %a5
-    %a15 = add i32 %a14, %a13
-    %a16 = add i32 %a15, %a10
-    %a17 = alloca i32
-    store i32 %a16, i32* %a17
-    ret void}
 
 define dso_local i32 @main() {
-    %a19 = alloca [2 x i32]
-    %a20 = getelementptr [2 x i32], [2 x i32] * %a19, i32 0, i32 0
-    store i32 0, i32* %a20
-    %a21 = getelementptr [2 x i32], [2 x i32] * %a19, i32 0, i32 1
-    store i32 1, i32* %a21
+    call void @putch(i32 50)
+    call void @putch(i32 49)
+    call void @putch(i32 51)
+    call void @putch(i32 55)
+    call void @putch(i32 49)
+    call void @putch(i32 50)
+    call void @putch(i32 57)
+    call void @putch(i32 53)
+    call void @putch(i32 10)
+    %a1 = alloca i32
+    store i32 0, i32* %a1
+    %a2 = add i32 0, 1
+    br label %a3
+a3:
+    %a7 = load i32, i32* %a1
+    %a8 = icmp sgt i32 %a7, 0
+    %a9 = select i1 %a8, i32 1, i32 0
+    %a10 = icmp ne i32 0, %a9
+    br i1 %a10, label %a4, label %a5
+a4:
+    store i32 1, i32* %a1
+    br label %a6
+a5:
+    store i32 0, i32* %a1
+    br label %a6
+a6:
+    %a11 = alloca i32
+    store i32 1, i32* %a11
+    %a12 = alloca i32
+    store i32 2, i32* %a12
+    br label %a13
+a13:
+    %a16 = load i32, i32* %a11
+    %a17 = icmp sge i32 %a16, 0
+    %a18 = select i1 %a17, i32 1, i32 0
+    %a19 = icmp ne i32 0, %a18
+    br i1 %a19, label %a14, label %a15
+a14:
+    store i32 1, i32* %a11
+    br label %a15
+a15:
+    br label %a20
+a20:
+    %a23 = load i32, i32* %a11
+    %a24 = icmp sge i32 %a23, 0
+    %a25 = select i1 %a24, i32 1, i32 0
+    %a26 = icmp ne i32 0, %a25
+    br i1 %a26, label %a21, label %a22
+a21:
     br label %a22
 a22:
-    %a26 = getelementptr [2 x i32], [2 x i32]* %a19, i32 0, i32 0
-    %a27 = load i32, i32* %a26
-    %a28 = icmp eq i32 %a27, 0
-    %a29 = select i1 %a28, i32 1, i32 0
-    %a30 = icmp ne i32 0, %a29
-    br i1 %a30, label %a23, label %a24
-a23:
-    %a31 = call i32 @f1()
-    %a32 = getelementptr [2 x i32], [2 x i32]* %a19, i32 0, i32 1
-    store i32 %a31, i32* %a32
-    br label %a25
-a24:
-    %a33 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* @c, i32 0, i32 0
-    %a34 = getelementptr [2 x i32], [2 x i32]* %a33, i32 0, i32 0
-    %a35 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* @c, i32 0
-    %a36 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* %a35, i32 0, i32 0
-    call void @f2(i32 0, i32* %a34, [2 x i32]* %a36)
-    br label %a25
-a25:
-    %a37 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* @c, i32 0, i32 0, i32 0
-    %a38 = load i32, i32* %a37
-    %a39 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* @c, i32 0, i32 0
-    %a40 = getelementptr [2 x i32], [2 x i32]* %a39, i32 0, i32 0
-    %a41 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* @c, i32 0
-    %a42 = getelementptr [2 x [2 x i32]], [2 x [2 x i32]]* %a41, i32 0, i32 0
-    call void @f2(i32 %a38, i32* %a40, [2 x i32]* %a42)
-    call void @putch(i32 49)
-    call void @putch(i32 50)
-    call void @putch(i32 51)
-    %a43 = getelementptr [2 x i32], [2 x i32]* %a19, i32 0, i32 1
-    %a44 = load i32, i32* %a43
-    call void @putint(i32 %a44)
-    call void @putch(i32 10)
-    call void @putch(i32 49)
-    call void @putch(i32 50)
-    call void @putch(i32 51)
-    call void @putch(i32 52)
+    br label %a27
+a27:
+    %a31 = load i32, i32* %a11
+    %a33 = icmp eq i32 %a31, 0
+    %a32 = select i1 %a33, i32 1, i32 0
+    %a34 = icmp ne i32 0, %a32
+    br i1 %a34, label %a28, label %a29
+a28:
+    br label %a30
+a29:
+    br label %a30
+a30:
+    br label %a35
+a35:
+    %a38 = load i32, i32* %a12
+    %a39 = icmp sle i32 %a38, 0
+    %a40 = select i1 %a39, i32 1, i32 0
+    %a41 = icmp ne i32 0, %a40
+    br i1 %a41, label %a36, label %a37
+a36:
+    store i32 2, i32* %a12
+    br label %a37
+a37:
+    br label %a42
+a42:
+    %a45 = load i32, i32* %a11
+    %a46 = load i32, i32* %a12
+    %a47 = icmp eq i32 %a45, %a46
+    %a48 = select i1 %a47, i32 1, i32 0
+    %a49 = icmp ne i32 0, %a48
+    br i1 %a49, label %a43, label %a44
+a43:
+    store i32 1, i32* %a1
+    br label %a44
+a44:
+    br label %a50
+a50:
+    %a53 = load i32, i32* %a11
+    %a54 = load i32, i32* %a12
+    %a55 = icmp ne i32 %a53, %a54
+    %a56 = select i1 %a55, i32 1, i32 0
+    %a57 = icmp ne i32 0, %a56
+    br i1 %a57, label %a51, label %a52
+a51:
+    store i32 0, i32* %a1
+    br label %a52
+a52:
+    br label %a58
+a58:
+    %a62 = load i32, i32* %a11
+    %a63 = load i32, i32* %a12
+    %a64 = icmp ne i32 %a62, %a63
+    %a65 = select i1 %a64, i32 1, i32 0
+    %a66 = icmp ne i32 0, %a65
+    br i1 %a66, label %a61, label %a60
+a61:
+    %a67 = load i32, i32* %a11
+    %a68 = icmp sgt i32 %a67, 0
+    %a69 = select i1 %a68, i32 1, i32 0
+    %a70 = icmp ne i32 0, %a69
+    br i1 %a70, label %a59, label %a60
+a59:
+    store i32 1, i32* %a1
+    br label %a60
+a60:
+    br label %a71
+a71:
+    %a75 = load i32, i32* %a11
+    %a76 = load i32, i32* %a12
+    %a77 = icmp ne i32 %a75, %a76
+    %a78 = select i1 %a77, i32 1, i32 0
+    %a79 = icmp ne i32 0, %a78
+    br i1 %a79, label %a72, label %a74
+a74:
+    %a80 = load i32, i32* %a11
+    %a81 = icmp sgt i32 %a80, 0
+    %a82 = select i1 %a81, i32 1, i32 0
+    %a83 = icmp ne i32 0, %a82
+    br i1 %a83, label %a72, label %a73
+a72:
+    store i32 2, i32* %a1
+    br label %a73
+a73:
+    %a84 = load i32, i32* %a11
+    %a85 = add i32 %a84, 1
+    %a86 = sub i32 %a85, 0
+    store i32 %a86, i32* %a11
+    store i32 2, i32* %a11
+    store i32 -1, i32* %a11
     ret i32 0
 }

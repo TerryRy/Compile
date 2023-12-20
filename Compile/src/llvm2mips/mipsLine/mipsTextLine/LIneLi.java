@@ -10,7 +10,6 @@ public class LIneLi extends MipsTextLine {
     }
 
     public String toMips() {
-        // TODO:
-        return null;
+        return "li " + result + ", " + value;
     }
 }

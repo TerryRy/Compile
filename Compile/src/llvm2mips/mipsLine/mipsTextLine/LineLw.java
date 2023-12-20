@@ -10,7 +10,7 @@ public class LineLw extends MipsTextLine {
     }
 
     @Override
-    String toMips() {
+    public String toMips() {
         // lw $t0, -8($sp)
         return "lw " + result + ", " + ty + "($sp)";
     }

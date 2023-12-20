@@ -3,8 +3,8 @@ package llvm2mips;
 import Type.Type;
 import Type.IntegerType;
 import llvm2mips.MipsTable.MipsTabLin;
-import llvm2mips.llvmCommand.Alloca;
 import llvm2mips.llvmCommand.LlvmCom;
+import llvm2mips.mipsLine.mipsDataLine.MacroLine;
 import llvm2mips.mipsLine.mipsDataLine.MipsDataLine;
 import llvm2mips.mipsLine.mipsTextLine.*;
 
@@ -33,7 +33,7 @@ public class Mips {
 
     List<MipsTextLine> textLines = new ArrayList<>();
 
-    // 符号表
+    // 符号表，直接存到偏移量
     List<MipsTabLin> mipsTable = new ArrayList<>(); // 保存现场也在其中，意味着可能有多行ra,sp,v0等
 
     List<String> registers = new ArrayList<>();
@@ -52,22 +52,22 @@ public class Mips {
     int stackTop = 0; // 符号表栈顶，非调用过程中时其值指代的栈位可直接使用
 
     private void initRegisters() {
-        registers.add("t0");
-        registers.add("t1");
-        registers.add("t2");
-        registers.add("t3");
-        registers.add("t4");
-        registers.add("t5");
-        registers.add("t6");
-        registers.add("t7");
-        registers.add("s0");
-        registers.add("s1");
-        registers.add("s2");
-        registers.add("s3");
-        registers.add("s4");
-        registers.add("s5");
-        registers.add("s6");
-        registers.add("s7");
+        registers.add("$t0");
+        registers.add("$t1");
+        registers.add("$t2");
+        registers.add("$t3");
+        registers.add("$t4");
+        registers.add("$t5");
+        registers.add("$t6");
+        registers.add("$t7");
+        registers.add("$s0");
+        registers.add("$s1");
+        registers.add("$s2");
+        registers.add("$s3");
+        registers.add("$s4");
+        registers.add("$s5");
+        registers.add("$s6");
+        registers.add("$s7");
     }
 
     public void addDataLines(MipsDataLine dataLine) {
@@ -114,8 +114,8 @@ public class Mips {
     }
 
     public void freeRegister(String name) throws Exception {
-        if (Pattern.compile("^t|s[0-7]").matcher(name).matches()) {
-            System.out.println("回收寄存器成功！");
+        if (/*Pattern.compile("^t|s[0-7]").matcher(name).matches()*/!registers.contains(name)) {
+//            System.out.println("回收寄存器成功！");
             registers.add(name);
         }
         else {
@@ -129,12 +129,12 @@ public class Mips {
         // 保存ra, v0, 存入的值是更新前sp下的偏移
         addMipsTab("$ra", IntegerType.i32, memory_flag);
         memory_flag -= 4;
-        addTextLines(new LineSw("$v0", memory_flag));
-        addMipsTab("$v0", IntegerType.i32, memory_flag);
-        memory_flag -= 4;
-        // 保存sp， 这次存的是sp的值，sp使用加减法来更新的
+//        addTextLines(new LineSw("$v0", memory_flag));
+//        addMipsTab("$v0", IntegerType.i32, memory_flag);
+//        memory_flag -= 4;
+        // 保存sp， 这次存的是sp减去的值，sp使用加减法来更新的
         // 其中sp_Len视参数情况而定，其值为负，调用函数时使用加法，恢复现场时使用减法
-        addTextLines(new LineAdd("$sp", "$sp", String.valueOf(spLen)));
+        addTextLines(new LineCompute("addu", "$sp", "$sp", String.valueOf(spLen)));
         addMipsTab("$sp", IntegerType.i32, spLen);
         // 更新memory_lage,似的在sp更新后仍然能够正常使用
         memory_flag = memory_flag + spLen;
@@ -143,15 +143,15 @@ public class Mips {
     public void restoreSite() throws Exception {
         // 查符号表，取回最近的ra和v0
         MipsTabLin lineRa = checkMipsTab("$ra");
-        MipsTabLin lineV0 = checkMipsTab("$v0");
+//        MipsTabLin lineV0 = checkMipsTab("$v0");
         // 更新ra和v0的值
         addTextLines(new LineLw("$ra", lineRa.getIndex()));
-        addTextLines(new LineLw("$v0", lineV0.getIndex()));
+//        addTextLines(new LineLw("$v0", lineV0.getIndex()));
 
         // 查表读出最近的sp的spLen
         MipsTabLin LineSp = checkMipsTab("$sp");
         // 更新sp的值
-        addTextLines(new LineSub("$sp", "$sp", String.valueOf(LineSp.getIndex())));
+        addTextLines(new LineCompute("subu", "$sp", "$sp", String.valueOf(LineSp.getIndex())));
         // 根据spLen恢复memory_flag，额外＋两个4，相当于清掉ra和v0，避免后续回退时查错
         memory_flag = memory_flag - LineSp.getIndex() + 4 + 4;
 
@@ -162,22 +162,84 @@ public class Mips {
         }
     }
 
+    // 申请指定字节的空地址, 返回不用*4，直接使用
+    public int allocLoc(int bytes) {
+        memory_flag -= bytes * 4;
+        return  memory_flag + bytes * 4; // 真正分配的
+    }
+
+    // 根据偏移字节数计算地址,当然是存在寄存器里，需要调用者用完释放
+    public String getLoc(int bytes) throws Exception {
+        // addu rt, $sp, -bytes*4
+        int ty = bytes * -4;
+        String rt = getRegister();
+        Mips.getMips().addTextLines(new LineCompute("addu", rt, "$sp", "" + ty));
+        return rt;
+    }
+
     public void analyze(List<LlvmCom> llvmComs) {
+        addTextLines(new LineJal("main"));
+        addTextLines(new LineJ("return"));
         LlvmCom curLlvm;
         while (llvmCodsReader < llvmComs.size()) {
             curLlvm = readLlvm(llvmComs);
             curLlvm.analyzeCom();
         }
+        addTextLines(new LineNewBlock("return"));
+        /*
+        .macro GETINT()
+        li $v0, 5
+        syscall
+        .end_macro
+         */
+        List<MipsTextLine> mTLsGETINT = new ArrayList<>();
+        mTLsGETINT.add(new LIneLi("$v0", "5"));
+        mTLsGETINT.add(new LineSyscall());
+        addDataLines(new MacroLine("GETINT", mTLsGETINT));
+        /*
+        .macro PUTINT()
+        li $v0, 1
+        syscall
+        .end_macro
+         */
+        List<MipsTextLine> mTLsPUTINT = new ArrayList<>();
+        mTLsPUTINT.add(new LIneLi("$v0", "1"));
+        mTLsPUTINT.add(new LineSyscall());
+        addDataLines(new MacroLine("PUTINT", mTLsPUTINT));
+        /*
+        .macro PUTCH()
+        li $v0, 11
+        syscall
+        .end_macro
+         */
+        List<MipsTextLine> mTLsPUTCH = new ArrayList<>();
+        mTLsPUTCH.add(new LIneLi("$v0", "11"));
+        mTLsPUTCH.add(new LineSyscall());
+        addDataLines(new MacroLine("PUTCH", mTLsPUTCH));
+        /*
+        .macro PUTSTR()
+        li $v0, 4
+        syscall
+        .end_macro
+         */
+        List<MipsTextLine> mTLsPUTSTR = new ArrayList<>();
+        mTLsPUTSTR.add(new LIneLi("$v0", "4"));
+        mTLsPUTSTR.add(new LineSyscall());
+        addDataLines(new MacroLine("PUTSTR", mTLsPUTSTR));
     }
 
     public void mipsPrinter(BufferedWriter writer) throws IOException {
-        writer.write(".data");
+        writer.write(".data\n\n");
         for (MipsDataLine dataLine : mips.dataLines) {
-            writer.write(dataLine.toMips());
+            if (dataLine.toMips() != "") {
+                writer.write(dataLine.toMips() + "\n\n");
+            }
         }
-        writer.write(".text");
+        writer.write(".text\n\n");
         for (MipsTextLine textLine : mips.textLines) {
-            writer.write(textLine.toMips());
+            if (textLine.toMips() != "") {
+                writer.write(textLine.toMips() + "\n\n");
+            }
         }
     }
 }

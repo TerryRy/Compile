@@ -26,4 +26,13 @@ public class FRParam {
     public String getValue() {
         return value;
     }
+
+    public boolean getHasP() {
+        return tHasP;
+    }
+
+    @Override
+    public String toString() {
+        return this.type + (this.tHasP ? "*" : "") + " " + this.value;
+    }
 }

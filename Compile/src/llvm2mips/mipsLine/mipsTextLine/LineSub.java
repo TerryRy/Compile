@@ -12,7 +12,7 @@ public class LineSub extends MipsTextLine {
     }
 
     @Override
-    String toMips() {
+    public String toMips() {
         return "sub " + result + ", " + on1 + ", " + on2;
     }
 }
